@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Changed
+- **开源公开化**：`git filter-repo` 重写全部历史 — 清除早期提交中的本机绝对路径（`/home/…`、`/media/…`），作者信息统一为 `wangqiqi <wangqiqi@users.noreply.github.com>`；`LICENSE` 版权人改为 GitHub handle；历史 tag v0.1.0~v0.1.9 随重写同步更新
+
 ## [v0.1.9] - 2026-11-13
 
 ### Added
