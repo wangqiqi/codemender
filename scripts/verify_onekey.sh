@@ -61,5 +61,7 @@ grep -q 'flock' "$ONEKEY" || fail "missing flock start lock"
 grep -q 'wc -c' "$ONEKEY" || fail "rotate 应使用跨平台 wc -c（GNU stat 不可移植）"
 grep -q "tr '\\\\0'" "$ONEKEY" || fail "pid_is_llama 应解析 /proc cmdline"
 grep -q "trap ':' INT" "$ONEKEY" || fail "cmd_logs 缺 Ctrl-C 隔离"
+grep -q "^lan_ip()" "$ONEKEY" || fail "missing function lan_ip"
+grep -q "^wan_ip()" "$ONEKEY" || fail "missing function wan_ip"
 
 echo "OK verify_onekey (L1)"

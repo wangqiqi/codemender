@@ -30,7 +30,7 @@ cp configs/paths.example.sh configs/local.sh && $EDITOR configs/local.sh
 | `start` | 后台启动（nohup + `logs/llama-server.pid` + `logs/server.log`），启动前校验模型文件，缺失时提示先 `download` |
 | `stop` | 优雅停止（TERM → 超时 KILL） |
 | `restart` | 重启（幂等） |
-| `status` | 状态（managed / 外部启动 / 僵尸 pidfile）+ `/health` 探活 + 模型文件校验 |
+| `status` | 状态（managed / 外部启动 / 僵尸 pidfile）+ `/health` 探活 + 模型文件校验 + 局域网/广域网地址（广域网需端口转发；**服务无鉴权，暴露需谨慎**） |
 | `health` | 仅 `GET /health` |
 | `logs` | 跟踪服务日志（`tail -f`） |
 | `download [目录]` | 下载/校验模型；指定非默认目录时提示与 `TESS_MODEL_DIR` 差异 |

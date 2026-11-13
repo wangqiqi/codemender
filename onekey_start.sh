@@ -104,6 +104,22 @@ service_alias_ok() {
     curl -sf --max-time 3 "${BASE_URL}/v1/models" 2>/dev/null | grep -q 'tess-4.5-27b'
 }
 
+# 局域网 IP（首个非回环地址）
+lan_ip() {
+    hostname -I 2>/dev/null | awk '{print $1}'
+}
+
+# 广域网 IP（公网出口探测；优先复用本仓 github 代理配置，无则直连）
+wan_ip() {
+    local proxy
+    proxy="$(git config --get http.https://github.com.proxy 2>/dev/null || true)"
+    if [ -n "$proxy" ]; then
+        curl -sf --max-time 3 -x "$proxy" https://api.ipify.org 2>/dev/null || true
+    else
+        curl -sf --max-time 3 https://api.ipify.org 2>/dev/null || true
+    fi
+}
+
 # 端口占用探测（bash 内建 /dev/tcp，无外部依赖）
 port_busy() {
     (exec 3<>"/dev/tcp/127.0.0.1/${1}") 2>/dev/null
@@ -295,6 +311,20 @@ cmd_status() {
     echo "═══ Codemender 服务状态 ═══"
     echo "  状态     : ${state}"
     echo "  端点     : ${BASE_URL}/v1 (model: tess-4.5-27b)"
+    if [ "$state" = "running" ]; then
+        local lan wan
+        lan="$(lan_ip)"
+        wan="$(wan_ip)"
+        if [ -n "$lan" ]; then
+            echo "  局域网   : http://${lan}:${PORT}/v1"
+        fi
+        if [ -n "$wan" ]; then
+            echo "  广域网   : http://${wan}:${PORT}/v1"
+            warn "广域网可达还需路由器端口转发/防火墙放行；服务当前无鉴权 — 谨慎暴露"
+        else
+            echo "  广域网   : 探测失败（可能未联网/无公网出口）"
+        fi
+    fi
     if [ -n "$detail" ]; then
         echo "  进程     : ${detail}"
     fi
