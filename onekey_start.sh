@@ -9,7 +9,7 @@ cd "$ROOT"
 
 # ── 配置：configs/local.sh（gitignored）→ 环境变量覆盖；tracked 文件零字面路径 ──
 # 契约：同名环境变量优先级高于 local.sh — source 前保存外部导出值，source 后恢复
-_env_keys="LLAMA_SERVER_BIN TESS_MODEL_DIR TESS_PORT HF_ENDPOINT TESS_START_WAIT TESS_STOP_WAIT TESS_LOG_MAX_BYTES TESS_LOG_KEEP TESS_DL_MIN_GB TESS_MAIN_GGUF TESS_DRAFT_GGUF TESS_MMPROJ TESS_CTX"
+_env_keys="LLAMA_SERVER_BIN TESS_MODEL_DIR TESS_PORT HF_ENDPOINT TESS_START_WAIT TESS_STOP_WAIT TESS_LOG_MAX_BYTES TESS_LOG_KEEP TESS_DL_MIN_GB TESS_MAIN_GGUF TESS_DRAFT_GGUF TESS_MMPROJ TESS_CTX TESS_API_KEY"
 _env_saved=""
 for _k in ${_env_keys}; do
     if [ -n "${!_k+x}" ]; then
@@ -242,6 +242,17 @@ cmd_start() {
         fail "端口 ${PORT} 已被其他进程占用 — 换端口: TESS_PORT=<port> ./onekey_start.sh start"
         return 1
     fi
+    # 显存余量预检：按当前选型判定（附加件/未知跳过；restart 场景 stop 已释放显存）
+    local vram_need tag_cur
+    tag_cur="$(catalog_tag_of_main "$MAIN_GGUF" || echo q4km)"
+    if catalog_get "$tag_cur" && [ "$CAT_VRAM" != "0" ]; then
+        vram_need="$CAT_VRAM"
+    else
+        vram_need=22
+    fi
+    if ! vram_preflight "$vram_need"; then
+        return 1
+    fi
     # 仅当进程确实已死才清 pidfile（模型加载中 /health 未就绪时不得误删活服务的 pidfile）
     local stale_pid
     if stale_pid="$(pid_from_file)" && ! pid_alive "$stale_pid"; then
@@ -360,6 +371,11 @@ cmd_status() {
     echo "═══ Codemender 服务状态 ═══"
     echo "  状态     : ${state}"
     echo "  端点     : ${BASE_URL}/v1 (model: tess-4.5-27b)"
+    if [ -n "${TESS_API_KEY:-}" ]; then
+        echo "  鉴权     : 已启用（TESS_API_KEY · OpenAI Bearer）"
+    else
+        echo "  鉴权     : 未启用 — 设 TESS_API_KEY 开启（公网暴露前必做）"
+    fi
     if [ -n "${TESS_MMPROJ:-}" ]; then
         echo "  视觉     : 启用（TESS_MMPROJ=${TESS_MMPROJ}）"
     else
@@ -427,6 +443,25 @@ MODEL_CATALOG=(
 
 gpu_total_vram_mib() {
     nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -n 1 | tr -dc '0-9'
+}
+
+# start 前显存余量预检：$1=vram_need_gb — 不足则 fail 并给降 ctx 建议
+# 采样两次（间隔 2s）：restart 场景 stop 刚结束，CUDA 释放有延迟，取后值
+vram_preflight() {
+    local total used free_mib need_mib
+    total="$(gpu_total_vram_mib)"
+    [ -z "$total" ] && return 0
+    used="$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null | head -n 1 | tr -dc '0-9')"
+    sleep 2
+    used="$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null | head -n 1 | tr -dc '0-9')"
+    [ -z "$used" ] && return 0
+    free_mib=$((total - used))
+    need_mib=$(( $1 * 1024 + 2048 ))   # 需求 + 2GB 运行余量
+    if [ "$free_mib" -lt "$need_mib" ]; then
+        fail "GPU 可用 ${free_mib}MiB < 需求约 ${need_mib}MiB（${1}GB 选型 + 2GB 余量）— 先停占用者，或 TESS_CTX=16384 降上下文"
+        return 1
+    fi
+    msg "GPU 可用 ${free_mib}MiB ≥ 需求 ${need_mib}MiB ✅"
 }
 
 # 显存判定：need ≤ 总显存 → 推荐；≤ 总+4GB → 紧张；否则不推荐

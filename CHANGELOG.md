@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+## [v0.1.20] - 2026-11-13
+
+### Added
+- **SPRINT-05 · API 鉴权**：`TESS_API_KEY` → llama-server `--api-key`（缺省关闭）；status 新增鉴权行；`env.example` 口径同步（服务端设 key 后 Harness 必须填同值）
+- **SPRINT-05 · start 前显存余量预检**（`vram_preflight`）：按当前选型需求 + 2GB 余量判定，不足 fail 并建议 `TESS_CTX=16384`；双采样抗 restart 后 CUDA 释放延迟
+
+### Changed
+- **SPRINT-05 · 视觉端到端深验**：OCR 精确读出图片文字、双图顺序颜色正确（~2.5s）；失败路径（mmproj 缺失/文件名错）fail-closed 带指引
+
+## [v0.1.19] - 2026-11-13
+
+### Changed
+- **README Landing Page 化**：居中 hero + shields.io 徽章 + ✨亮点矩阵 + mermaid 架构图 + 性能表格化；事实性内容（env 表/警示/验收）零丢失
+
+## [v0.1.18] - 2026-11-13
+
 ### Changed
 - **脚本布局整改**（母版 scripts-layout 门禁）：`start_server.sh` 增长至 53 逻辑行（>根脚本 40 上限）→ 迁入 `scripts/server/`；全部引用点同步（onekey · verify · verify_onekey · bench · batch_review · scripts 矩阵 · README）；`.cursor/rules/local` 断链由 `bootstrap-growth.sh` 修复
 

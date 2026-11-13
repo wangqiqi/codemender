@@ -6,7 +6,7 @@ set -euo pipefail
 # 本机私有路径：configs/local.sh（gitignored）→ 环境变量覆盖；tracked 文件零字面路径
 # 契约：同名环境变量优先级高于 local.sh — source 前保存外部导出值，source 后恢复（与 onekey_start.sh 同源）
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-_env_keys="LLAMA_SERVER_BIN TESS_MODEL_DIR TESS_PORT TESS_MAIN_GGUF TESS_DRAFT_GGUF"
+_env_keys="LLAMA_SERVER_BIN TESS_MODEL_DIR TESS_PORT TESS_MAIN_GGUF TESS_DRAFT_GGUF TESS_MMPROJ TESS_CTX TESS_API_KEY"
 _env_saved=""
 for _k in ${_env_keys}; do
     if [ -n "${!_k+x}" ]; then
@@ -79,6 +79,10 @@ ARGS=(
 )
 if [ -n "$MMProj" ]; then
     ARGS+=(--mmproj "$MMProj")
+fi
+# API 鉴权（可选）：TESS_API_KEY 设置 → --api-key（客户端走 OpenAI Bearer）
+if [ -n "${TESS_API_KEY:-}" ]; then
+    ARGS+=(--api-key "$TESS_API_KEY")
 fi
 if [ -n "$MTP_DRAFT" ]; then
     ARGS+=(--spec-type draft-mtp --model-draft "$MTP_DRAFT")
