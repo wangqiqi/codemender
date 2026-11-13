@@ -63,5 +63,8 @@ grep -q "tr '\\\\0'" "$ONEKEY" || fail "pid_is_llama 应解析 /proc cmdline"
 grep -q "trap ':' INT" "$ONEKEY" || fail "cmd_logs 缺 Ctrl-C 隔离"
 grep -q "^lan_ip()" "$ONEKEY" || fail "missing function lan_ip"
 grep -q "^wan_ip()" "$ONEKEY" || fail "missing function wan_ip"
+grep -q "^dl_preflight()" "$ONEKEY" || fail "missing function dl_preflight"
+grep -q "^gpu_status_report()" "$ONEKEY" || fail "missing function gpu_status_report"
+grep -q 'TESS_DL_MIN_GB' "$ONEKEY" || fail "missing TESS_DL_MIN_GB"
 
 echo "OK verify_onekey (L1)"

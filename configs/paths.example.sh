@@ -7,5 +7,6 @@
 # export TESS_PORT=8000
 # export TESS_LOG_MAX_BYTES=10485760   # server.log 轮转阈值（字节，默认 10MB）
 # export TESS_LOG_KEEP=3               # 轮转保留份数（server.log.1 ~ .N）
+# export TESS_DL_MIN_GB=20             # download 预检磁盘可用空间下限（GB）
 echo "这是模板 — 请复制为 configs/local.sh 后填写，不应直接执行。" >&2
 exit 1

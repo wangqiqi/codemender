@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- `download` 下载预检：磁盘可用空间硬门禁（`TESS_DL_MIN_GB`，默认 20GB，不足即 fail）+ GPU 状态展示（nvidia-smi）；模型已就绪时幂等跳过下载
 - `docs/build-llamacpp.md`：llama.cpp 从源码构建指南（CUDA · pin b9478 保 draft-mtp · 安装接线 · 常见坑速查）；README 快速开始挂链接；verify.sh 登记该文档存在性
 - onekey `start` 端口预检：端口被其他进程占用时直接失败并提示 `TESS_PORT` 换端口（bash `/dev/tcp` 探测，无外部依赖）
 - `status` 展示局域网/广域网地址：`lan_ip`（`hostname -I`）+ `wan_ip`（ipify，自动复用本仓代理配置）— 广域网条目强制附带「无鉴权 · 需端口转发」安全警示

@@ -50,6 +50,7 @@ tracked 文件不含机器路径）；同名环境变量优先级更高。
 | 停止等待（秒） | `TESS_STOP_WAIT` | `60` |
 | 日志轮转阈值（字节） | `TESS_LOG_MAX_BYTES` | `10485760`（10MB） |
 | 日志轮转保留份数 | `TESS_LOG_KEEP` | `3` |
+| download 磁盘预检下限（GB） | `TESS_DL_MIN_GB` | `20` |
 
 > `start` 内置端口预检：端口被其他进程占用时直接失败并提示换 `TESS_PORT`；
 > `server.log` 超阈值自动轮转为 `server.log.1`（滚动保留 `TESS_LOG_KEEP` 份）。

@@ -145,6 +145,33 @@ rotate_log() {
     msg "日志已轮转（${size}B ≥ ${LOG_MAX_BYTES}B，保留 ${LOG_KEEP} 份）"
 }
 
+# GPU 状态展示（download 预检信息项；不影响下载本身）
+gpu_status_report() {
+    command -v nvidia-smi >/dev/null 2>&1 || { warn "未找到 nvidia-smi — 无 NVIDIA GPU 或驱动未安装"; return 0; }
+    local line
+    while IFS= read -r line; do
+        msg "GPU: ${line}"
+    done < <(nvidia-smi --query-gpu=name,memory.used,memory.total,utilization.gpu --format=csv,noheader 2>/dev/null)
+}
+
+# download 预检：磁盘可用空间硬门禁 + GPU 状态展示
+dl_preflight() {
+    local dir="$1"
+    local need_gb="${TESS_DL_MIN_GB:-20}" avail
+    msg "── 下载预检 ──"
+    avail="$(df -BG --output=avail "$dir" 2>/dev/null | tail -n 1 | tr -dc '0-9' || true)"
+    if [ -n "$avail" ]; then
+        if [ "$avail" -lt "$need_gb" ]; then
+            fail "磁盘可用 ${avail}GB < 预估需求 ${need_gb}GB（主模型+draft 约 20GB）— 清理磁盘或换目标目录"
+            return 1
+        fi
+        msg "磁盘可用 ${avail}GB ≥ 预估需求 ${need_gb}GB ✅"
+    else
+        warn "无法探测磁盘可用空间（df 失败）— 继续下载"
+    fi
+    gpu_status_report
+}
+
 check_models() {
     local dir="${1:-$MODEL_DIR}"
     if [ -z "$dir" ]; then
@@ -372,6 +399,14 @@ cmd_download() {
     fi
     command -v hf >/dev/null 2>&1 || { fail "未找到 hf CLI（pip install -U huggingface_hub）"; return 1; }
     mkdir -p "$dl_dir"
+    # 幂等短路：模型已就绪则不重复下载
+    if check_models "$dl_dir"; then
+        ok "模型文件已就绪 — 跳过下载（如需强制重下请先删除目标文件）"
+        return 0
+    fi
+    if ! dl_preflight "$dl_dir"; then
+        return 1
+    fi
     local ts
     ts="$(date +%Y%m%d_%H%M%S)"
     local dl_log="${LOG_DIR}/download-${ts}.log"
@@ -453,6 +488,7 @@ usage() {
   TESS_PORT=8000    服务端口（start_server.sh 同步读取）
   TESS_LOG_MAX_BYTES=10485760   server.log 轮转阈值（字节）
   TESS_LOG_KEEP=3   轮转保留份数
+  TESS_DL_MIN_GB=20 download 预检磁盘可用空间下限（GB）
 EOF
 }
 
