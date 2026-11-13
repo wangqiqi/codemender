@@ -9,7 +9,7 @@ cd "$ROOT"
 
 # ── 配置：configs/local.sh（gitignored）→ 环境变量覆盖；tracked 文件零字面路径 ──
 # 契约：同名环境变量优先级高于 local.sh — source 前保存外部导出值，source 后恢复
-_env_keys="LLAMA_SERVER_BIN TESS_MODEL_DIR TESS_PORT HF_ENDPOINT TESS_START_WAIT TESS_STOP_WAIT TESS_LOG_MAX_BYTES TESS_LOG_KEEP"
+_env_keys="LLAMA_SERVER_BIN TESS_MODEL_DIR TESS_PORT HF_ENDPOINT TESS_START_WAIT TESS_STOP_WAIT TESS_LOG_MAX_BYTES TESS_LOG_KEEP TESS_DL_MIN_GB TESS_MAIN_GGUF TESS_DRAFT_GGUF"
 _env_saved=""
 for _k in ${_env_keys}; do
     if [ -n "${!_k+x}" ]; then
@@ -31,10 +31,17 @@ fi
 unset _env_keys _env_saved _k _item _v
 LLAMA_BIN="${LLAMA_SERVER_BIN:-}"
 MODEL_DIR="${TESS_MODEL_DIR:-}"
-MAIN_GGUF="Tess-4.5-27B-Q4_K_M.gguf"
+# 模型变体选型：TESS_MAIN_GGUF 显式设置优先；TESS_DRAFT_GGUF set-but-empty = 无 draft（start 不加 --spec-type）
+MAIN_GGUF="${TESS_MAIN_GGUF:-Tess-4.5-27B-Q4_K_M.gguf}"
 DRAFT_GGUF="mtp-Tess-4.5-27B-Q4_K_M.gguf"
+if [ "${TESS_DRAFT_GGUF+x}" = "x" ]; then
+    DRAFT_GGUF="$TESS_DRAFT_GGUF"
+fi
 MODEL="${MODEL_DIR:+${MODEL_DIR}/${MAIN_GGUF}}"
-MTP_DRAFT="${MODEL_DIR:+${MODEL_DIR}/${DRAFT_GGUF}}"
+MTP_DRAFT=""
+if [ -n "$DRAFT_GGUF" ] && [ -n "$MODEL_DIR" ]; then
+    MTP_DRAFT="${MODEL_DIR}/${DRAFT_GGUF}"
+fi
 PORT="${TESS_PORT:-8000}"
 BASE_URL="http://localhost:${PORT}"
 # 下载源：默认 hf-mirror.com，可 HF_ENDPOINT 覆盖
@@ -155,14 +162,19 @@ gpu_status_report() {
 }
 
 # download 预检：磁盘可用空间硬门禁 + GPU 状态展示
-dl_preflight() {
+dl_preflight() { # $1=dir $2=need_gb（可选，缺省 TESS_DL_MIN_GB；最终不小于 TESS_DL_MIN_GB 下限）
     local dir="$1"
-    local need_gb="${TESS_DL_MIN_GB:-20}" avail
+    local need_gb="${2:-${TESS_DL_MIN_GB:-20}}"
+    local floor="${TESS_DL_MIN_GB:-20}"
+    local avail
+    if [ "$need_gb" -lt "$floor" ]; then
+        need_gb="$floor"
+    fi
     msg "── 下载预检 ──"
     avail="$(df -BG --output=avail "$dir" 2>/dev/null | tail -n 1 | tr -dc '0-9' || true)"
     if [ -n "$avail" ]; then
         if [ "$avail" -lt "$need_gb" ]; then
-            fail "磁盘可用 ${avail}GB < 预估需求 ${need_gb}GB（主模型+draft 约 20GB）— 清理磁盘或换目标目录"
+            fail "磁盘可用 ${avail}GB < 预估需求 ${need_gb}GB — 清理磁盘或换目标目录"
             return 1
         fi
         msg "磁盘可用 ${avail}GB ≥ 预估需求 ${need_gb}GB ✅"
@@ -179,7 +191,7 @@ check_models() {
         return 1
     fi
     local missing=0 f
-    for f in "${dir}/${MAIN_GGUF}" "${dir}/${DRAFT_GGUF}"; do
+    for f in "${dir}/${MAIN_GGUF}"; do
         if [ -f "$f" ]; then
             ok "模型文件就绪: $f"
         else
@@ -187,6 +199,16 @@ check_models() {
             missing=1
         fi
     done
+    if [ -n "$DRAFT_GGUF" ]; then
+        for f in "${dir}/${DRAFT_GGUF}"; do
+            if [ -f "$f" ]; then
+                ok "draft 模型就绪: $f"
+            else
+                warn "缺少 draft 模型: $f"
+                missing=1
+            fi
+        done
+    fi
     return "$missing"
 }
 
@@ -389,39 +411,192 @@ cmd_logs() {
     trap - INT
 }
 
+# ── 模型目录（实测 HF 仓库变体 · 大小取自 HF tree API 2026-11-13）──
+# 字段: tag|主模型|draft(空=无)|下载量GB|显存需求GB(0=附加件)|说明
+MODEL_CATALOG=(
+    "q4km|Tess-4.5-27B-Q4_K_M.gguf|mtp-Tess-4.5-27B-Q4_K_M.gguf|18.6|22|默认 · mtp 加速 · 已实测"
+    "q6k|Tess-4.5-27B-Q6_K.gguf||22.1|27|质量更高 · 无 mtp draft · 需 CPU offload"
+    "q8_0|Tess-4.5-27B-Q8_0.gguf|mtp-Tess-4.5-27B-Q8_0.gguf|31.8|36|精度最高 · 超 24GB 显存"
+    "mmproj|mmproj-Tess-4.5-27B-F16.gguf||0.9|0|可选附加 · 视觉投影 · 服务端未接线"
+)
+
+gpu_total_vram_mib() {
+    nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -n 1 | tr -dc '0-9'
+}
+
+# 显存判定：need ≤ 总显存 → 推荐；≤ 总+4GB → 紧张；否则不推荐
+vram_verdict() { # $1=vram_need_gb $2=total_mib
+    local need_gb="$1" total_mib="$2"
+    if [ -z "$total_mib" ]; then
+        echo "未知"
+    elif [ $((need_gb * 1024)) -le "$total_mib" ]; then
+        echo "推荐"
+    elif [ $((need_gb * 1024)) -le $((total_mib + 4096)) ]; then
+        echo "紧张"
+    else
+        echo "不推荐"
+    fi
+}
+
+catalog_get() { # $1=tag → 填充 CAT_MAIN/CAT_DRAFT/CAT_SIZE/CAT_VRAM/CAT_NOTE；未登记 return 1
+    local row tag main draft size vram note
+    for row in "${MODEL_CATALOG[@]}"; do
+        IFS='|' read -r tag main draft size vram note <<<"$row"
+        if [ "$tag" = "$1" ]; then
+            CAT_MAIN="$main"; CAT_DRAFT="$draft"; CAT_SIZE="$size"; CAT_VRAM="$vram"; CAT_NOTE="$note"
+            return 0
+        fi
+    done
+    return 1
+}
+
+catalog_tag_of_main() { # 反查：主模型文件名 → tag（未登记返回空）
+    local row tag main rest
+    for row in "${MODEL_CATALOG[@]}"; do
+        IFS='|' read -r tag main rest <<<"$row"
+        if [ "$main" = "$1" ]; then
+            echo "$tag"
+            return 0
+        fi
+    done
+}
+
+# 交互选型菜单：输出选中 tag；取消/EOF return 1（默认选第一个「推荐」条目）
+model_select_menu() {
+    local total_mib verdict tag main draft size vram note idx pick sel
+    local default_tag="" default_set=""
+    total_mib="$(gpu_total_vram_mib)"
+    if [ -n "$total_mib" ]; then
+        echo "本机 GPU 显存: $((total_mib / 1024))GB"
+    fi
+    echo "── 模型目录（依本机环境推荐）──"
+    idx=0
+    for row in "${MODEL_CATALOG[@]}"; do
+        IFS='|' read -r tag main draft size vram note <<<"$row"
+        idx=$((idx + 1))
+        if [ "$vram" = "0" ]; then
+            verdict="可选附加"
+        else
+            verdict="$(vram_verdict "$vram" "$total_mib")"
+            if [ "$verdict" = "推荐" ] && [ -z "$default_set" ]; then
+                default_tag="$tag"; default_set=1
+            fi
+        fi
+        [ -n "$default_set" ] || default_tag="$tag"
+        printf " %d) %-7s [%s] 下载 %sGB · %s\n" "$idx" "$tag" "$verdict" "$size" "$note"
+    done
+    if read -r -p "选择序号或 tag [回车=${default_tag}]: " pick; then
+        :
+    else
+        warn "输入流结束 — 取消选型"
+        return 1
+    fi
+    pick="${pick:-$default_tag}"
+    case "$pick" in
+        b|back|q|quit) return 1 ;;
+    esac
+    if [ "$pick" -eq "$pick" ] 2>/dev/null; then
+        sel="$(printf '%s\n' "${MODEL_CATALOG[@]}" | sed -n "${pick}p" | cut -d'|' -f1)"
+    else
+        sel="$pick"
+    fi
+    if catalog_get "$sel"; then
+        echo "$sel"
+        return 0
+    fi
+    warn "无效选择: ${sel}"
+    return 1
+}
+
+# 选型写回 configs/local.sh 托管块（幂等；失败仅 warn 不打断下载）
+write_model_selection() { # $1=主模型文件名 $2=draft 文件名（可空=无 draft）
+    local cfg="${ROOT}/configs/local.sh"
+    if [ ! -f "$cfg" ]; then
+        warn "configs/local.sh 不存在 — 选型未写回，请手动添加: export TESS_MAIN_GGUF=\"$1\""
+        return 0
+    fi
+    local bb="# >>> codemender model-select (auto) >>>"
+    local be="# <<< codemender model-select <<<"
+    local tmp="${cfg}.tmp.$$"
+    if ! awk -v b="$bb" -v e="$be" 'index($0,b)==1{skip=1;next} index($0,e)==1{skip=0;next} !skip' "$cfg" > "$tmp" 2>/dev/null; then
+        warn "选型写回失败（读写受限）— 保持原配置"
+        rm -f "$tmp" 2>/dev/null || true
+        return 0
+    fi
+    {
+        echo "$bb"
+        echo "export TESS_MAIN_GGUF=\"$1\""
+        if [ -n "$2" ]; then
+            echo "export TESS_DRAFT_GGUF=\"$2\""
+        else
+            echo "export TESS_DRAFT_GGUF=\"\"  # 无 mtp draft"
+        fi
+        echo "$be"
+    } >> "$tmp" && mv "$tmp" "$cfg" || { warn "选型写回失败 — 保持原配置"; rm -f "$tmp" 2>/dev/null || true; return 0; }
+    msg "选型已写回 configs/local.sh（托管块）— 下次 start 生效"
+}
+
 # ── 模型下载 ────────────────────────────────────────────────────────
-# 用法: download [目标目录] — 缺省用 configs/local.sh 的 TESS_MODEL_DIR
-cmd_download() {
+# 用法: download [目录] [模型tag] — 缺省目录=TESS_MODEL_DIR，缺省 tag=当前配置选型
+#       无参数且交互终端 → 走选型菜单
+cmd_download_menu() {
+    local tag
+    if ! tag="$(model_select_menu)"; then
+        return 0
+    fi
+    catalog_get "$tag" || return 0
+    local dldir=""
+    read -r -p "下载目录 [回车=${MODEL_DIR:-未配置}]: " dldir || dldir=""
+    cmd_download "${dldir:-$MODEL_DIR}" "$tag" || true
+}
+
+cmd_download() { # $1=目录 $2=模型 tag（缺省=当前配置选型；未登记回退 q4km）
     local dl_dir="${1:-$MODEL_DIR}"
     if [ -z "$dl_dir" ]; then
         fail "未指定下载目录 — 用法: ./onekey_start.sh download <目录>，或先配置 configs/local.sh 的 TESS_MODEL_DIR"
         return 1
     fi
+    local tag="${2:-}"
+    if [ -z "$tag" ]; then
+        tag="$(catalog_tag_of_main "$MAIN_GGUF" || echo q4km)"
+    fi
+    if ! catalog_get "$tag"; then
+        fail "未知模型 tag: ${tag}（可选: q4km/q6k/q8_0/mmproj）"
+        return 1
+    fi
     command -v hf >/dev/null 2>&1 || { fail "未找到 hf CLI（pip install -U huggingface_hub）"; return 1; }
     mkdir -p "$dl_dir"
-    # 幂等短路：模型已就绪则不重复下载
-    if check_models "$dl_dir"; then
-        ok "模型文件已就绪 — 跳过下载（如需强制重下请先删除目标文件）"
+    # 幂等短路：按选型文件集判断，已就绪则不重复下载
+    if [ -f "${dl_dir}/${CAT_MAIN}" ] && { [ -z "$CAT_DRAFT" ] || [ -f "${dl_dir}/${CAT_DRAFT}" ]; }; then
+        ok "模型文件已就绪（${tag}: ${CAT_MAIN}）— 跳过下载（如需强制重下请先删除目标文件）"
         return 0
     fi
-    if ! dl_preflight "$dl_dir"; then
+    # 预检需求量 = 选型下载量(取整) + 3GB 余量，且不低于 TESS_DL_MIN_GB 下限
+    if ! dl_preflight "$dl_dir" "$(( ${CAT_SIZE%%.*} + 3 ))"; then
         return 1
     fi
     local ts
     ts="$(date +%Y%m%d_%H%M%S)"
     local dl_log="${LOG_DIR}/download-${ts}.log"
-    msg "下载仓库: ${HF_REPO} → ${dl_dir}"
+    msg "下载仓库: ${HF_REPO} → ${dl_dir}（选型: ${tag} · ${CAT_NOTE}）"
     msg "下载源: ${HF_ENDPOINT_VAL} · 日志: logs/download-${ts}.log（断点续传，可重复执行）"
+    local -a dl_files=("$CAT_MAIN")
+    if [ -n "$CAT_DRAFT" ]; then
+        dl_files+=("$CAT_DRAFT")
+    fi
     # 包裹失败路径：hf 失败/中断不得被 set -e 腰斩（pipefail），给出可续传指引
     # 规避 socks 代理坑：ALL_PROXY=socks:// 会被 httpx 判为非法 → 显式剔除
     if ! env -u ALL_PROXY -u all_proxy HF_ENDPOINT="$HF_ENDPOINT_VAL" \
-        hf download "$HF_REPO" "$MAIN_GGUF" "$DRAFT_GGUF" \
+        hf download "$HF_REPO" "${dl_files[@]}" \
         --local-dir "$dl_dir" 2>&1 | tee "$dl_log"; then
         fail "hf 下载失败/中断（断点续传，可重试）— 日志: logs/download-${ts}.log"
         return 1
     fi
-    if check_models "$dl_dir"; then
-        ok "模型下载完成并校验通过: ${dl_dir}"
+    if [ -f "${dl_dir}/${CAT_MAIN}" ] && { [ -z "$CAT_DRAFT" ] || [ -f "${dl_dir}/${CAT_DRAFT}" ]; }; then
+        ok "模型下载完成并校验通过: ${dl_dir}（${tag}）"
+        if [ "$CAT_VRAM" != "0" ] && { [ "$CAT_MAIN" != "$MAIN_GGUF" ] || [ "$CAT_DRAFT" != "$DRAFT_GGUF" ]; }; then
+            write_model_selection "$CAT_MAIN" "$CAT_DRAFT"
+        fi
         if [ "$dl_dir" != "$MODEL_DIR" ]; then
             msg "提示: 服务默认从 TESS_MODEL_DIR 加载模型（${MODEL_DIR:-未配置}）— 要服务此目录请更新 configs/local.sh"
         fi
@@ -454,10 +629,7 @@ cmd_menu() {
             4) cmd_status  || true ;;
             5) cmd_health  || true ;;
             6) cmd_logs    || true ;;
-            7)
-                read -r -p "下载目录 [回车=${MODEL_DIR:-未配置}]: " dldir || dldir=""
-                cmd_download "$dldir" || true
-                ;;
+            7) cmd_download_menu || true ;;
             h|help) usage ;;
             q|quit|exit) echo "再见。"; break ;;
             *) echo "无效选项: ${choice}" ;;
@@ -479,7 +651,8 @@ usage() {
   logs              跟踪服务日志（tail -f）
 
 模型:
-  download [目录]   下载主模型 + MTP draft（hf CLI，断点续传；缺省目录见 configs/local.sh）
+  download [目录] [tag]  下载模型（hf CLI，断点续传；tag: q4km/q6k/q8_0/mmproj，
+                        缺省=当前配置选型；无参数交互终端 → 环境感知选型菜单）
 
 其他:
   help              本帮助
@@ -489,6 +662,8 @@ usage() {
   TESS_LOG_MAX_BYTES=10485760   server.log 轮转阈值（字节）
   TESS_LOG_KEEP=3   轮转保留份数
   TESS_DL_MIN_GB=20 download 预检磁盘可用空间下限（GB）
+  TESS_MAIN_GGUF    主模型文件名（选型菜单自动写回，默认 Q4_K_M）
+  TESS_DRAFT_GGUF   mtp draft 文件名（设空 = 无 draft，start 不加 --spec-type）
 EOF
 }
 
@@ -500,7 +675,15 @@ run_cmd() {
         status)  cmd_status ;;
         health)  cmd_health ;;
         logs)    cmd_logs ;;
-        download) cmd_download "${2:-}" ;;
+        download)
+            if [ -n "${2:-}" ]; then
+                cmd_download "$2" "${3:-}"
+            elif [ -t 0 ]; then
+                cmd_download_menu
+            else
+                cmd_download
+            fi
+            ;;
         menu)    cmd_menu ;;
         help|-h|--help) usage ;;
         *)
@@ -515,4 +698,7 @@ run_cmd() {
     esac
 }
 
-run_cmd "$@"
+# 可测性钩子：ONEKEY_NO_EXEC=1 时仅加载定义不执行（供 source 单测）
+if [ "${ONEKEY_NO_EXEC:-0}" != "1" ]; then
+    run_cmd "$@"
+fi

@@ -6,7 +6,7 @@ set -euo pipefail
 # 本机私有路径：configs/local.sh（gitignored）→ 环境变量覆盖；tracked 文件零字面路径
 # 契约：同名环境变量优先级高于 local.sh — source 前保存外部导出值，source 后恢复（与 onekey_start.sh 同源）
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-_env_keys="LLAMA_SERVER_BIN TESS_MODEL_DIR TESS_PORT"
+_env_keys="LLAMA_SERVER_BIN TESS_MODEL_DIR TESS_PORT TESS_MAIN_GGUF TESS_DRAFT_GGUF"
 _env_saved=""
 for _k in ${_env_keys}; do
     if [ -n "${!_k+x}" ]; then
@@ -31,24 +31,41 @@ MODEL_DIR="${TESS_MODEL_DIR:-}"
 : "${LLAMA_BIN:?缺少 LLAMA_SERVER_BIN — 复制 configs/paths.example.sh → configs/local.sh 或导出环境变量}"
 : "${MODEL_DIR:?缺少 TESS_MODEL_DIR — 复制 configs/paths.example.sh → configs/local.sh 或导出环境变量}"
 
-MODEL="${MODEL_DIR}/Tess-4.5-27B-Q4_K_M.gguf"
-MTP_DRAFT="${MODEL_DIR}/mtp-Tess-4.5-27B-Q4_K_M.gguf"
 PORT="${TESS_PORT:-8000}"
 CTX=32768          # 24GB 显存下 Q4_K_M(16.5GB) 预留 ~7GB 给 KV cache，32K 稳妥
 GPU_LAYERS=999     # 全部层offload到GPU
 
-for f in "$MODEL" "$MTP_DRAFT"; do
-    [ -f "$f" ] || { echo "❌ 缺少模型文件: $f （先运行下载）"; exit 1; }
-done
+# 模型变体选型（选型菜单写回 local.sh 托管块 → 此处生效）
+# TESS_MAIN_GGUF 显式设置优先；TESS_DRAFT_GGUF set-but-empty = 无 draft（不加 --spec-type）
+MAIN_GGUF="${TESS_MAIN_GGUF:-Tess-4.5-27B-Q4_K_M.gguf}"
+MODEL="${MODEL_DIR}/${MAIN_GGUF}"
+MTP_DRAFT_NAME="mtp-Tess-4.5-27B-Q4_K_M.gguf"
+if [ "${TESS_DRAFT_GGUF+x}" = "x" ]; then
+    MTP_DRAFT_NAME="$TESS_DRAFT_GGUF"
+fi
+MTP_DRAFT=""
+if [ -n "$MTP_DRAFT_NAME" ]; then
+    MTP_DRAFT="${MODEL_DIR}/${MTP_DRAFT_NAME}"
+fi
 
-exec "$LLAMA_BIN" \
-    --host 0.0.0.0 --port "$PORT" \
-    --model "$MODEL" \
-    --alias tess-4.5-27b \
-    --ctx-size "$CTX" \
-    --n-gpu-layers "$GPU_LAYERS" \
-    --flash-attn on \
-    --jinja \
-    --spec-type draft-mtp \
-    --model-draft "$MTP_DRAFT" \
+[ -f "$MODEL" ] || { echo "❌ 缺少主模型文件: $MODEL （先运行下载）"; exit 1; }
+if [ -n "$MTP_DRAFT" ] && [ ! -f "$MTP_DRAFT" ]; then
+    echo "❌ 缺少 draft 模型文件: $MTP_DRAFT （先运行下载）"
+    exit 1
+fi
+
+ARGS=(
+    --host 0.0.0.0 --port "$PORT"
+    --model "$MODEL"
+    --alias tess-4.5-27b
+    --ctx-size "$CTX"
+    --n-gpu-layers "$GPU_LAYERS"
+    --flash-attn on
+    --jinja
     --threads "$(nproc)"
+)
+if [ -n "$MTP_DRAFT" ]; then
+    ARGS+=(--spec-type draft-mtp --model-draft "$MTP_DRAFT")
+fi
+
+exec "$LLAMA_BIN" "${ARGS[@]}"

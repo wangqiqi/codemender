@@ -2,15 +2,29 @@
 
 ## [Unreleased]
 
+## [v0.1.16] - 2026-11-13
+
 ### Added
+- **SPRINT-04 · download 环境感知模型选型**：交互菜单按本机 GPU 显存自动标注「推荐 / 紧张 / 不推荐」— 目录含实测 HF 仓库变体 `q4km`（18.6GB · mtp · 24GB 卡推荐）/ `q6k`（22.1GB · 无 draft · 紧张）/ `q8_0`（31.8GB · 不推荐）/ `mmproj`（0.9GB 可选附加·服务端未接线）
+- 选型写回 `configs/local.sh` 托管块（`# >>> codemender model-select >>>` 标记 · 幂等重选 · 失败仅 warn 不打断下载）
+- `start` 传导选型：`TESS_MAIN_GGUF` / `TESS_DRAFT_GGUF`（set-but-empty = 无 draft → 自动省略 `--spec-type draft-mtp`）
+- `ONEKEY_NO_EXEC=1` 可测性钩子（仅加载定义不执行，供 source 单测）
+
+### Changed
+- `download [目录] [tag]`：CLI 缺省 tag=当前配置选型（保持兼容）；无参数 + 交互终端 → 进选型菜单；预检需求量按所选变体收紧（下载量取整 + 3GB，不低于 `TESS_DL_MIN_GB` 下限）
+
+## [v0.1.15] - 2026-11-13（累积 v0.1.10~v0.1.15 同日连续 patch）
+
+### Added
+- onekey `start` 端口预检：端口被其他进程占用时直接失败并提示 `TESS_PORT` 换端口（bash `/dev/tcp` 探测，无外部依赖）
+- 日志轮转：`TESS_LOG_MAX_BYTES`（默认 10MB）/ `TESS_LOG_KEEP`（默认 3）— `server.log` 超阈值自动轮转为 `server.log.1`
+- `status` 展示局域网/广域网地址：`lan_ip`（`hostname -I`）+ `wan_ip`（ipify，自动复用本仓代理配置）— 广域网条目强制附带「无鉴权 · 需端口转发」安全警示
 - `download` 下载预检：磁盘可用空间硬门禁（`TESS_DL_MIN_GB`，默认 20GB，不足即 fail）+ GPU 状态展示（nvidia-smi）；模型已就绪时幂等跳过下载
 - `docs/build-llamacpp.md`：llama.cpp 从源码构建指南（CUDA · pin b9478 保 draft-mtp · 安装接线 · 常见坑速查）；README 快速开始挂链接；verify.sh 登记该文档存在性
-- onekey `start` 端口预检：端口被其他进程占用时直接失败并提示 `TESS_PORT` 换端口（bash `/dev/tcp` 探测，无外部依赖）
-- `status` 展示局域网/广域网地址：`lan_ip`（`hostname -I`）+ `wan_ip`（ipify，自动复用本仓代理配置）— 广域网条目强制附带「无鉴权 · 需端口转发」安全警示
-- 日志轮转：`TESS_LOG_MAX_BYTES`（默认 10MB）/ `TESS_LOG_KEEP`（默认 3）— `server.log` 超阈值自动轮转为 `server.log.1`
 
 ### Changed
 - **开源公开化**：`git filter-repo` 重写全部历史 — 清除早期提交中的本机绝对路径（`/home/…`、`/media/…`），作者信息统一为 `wangqiqi <wangqiqi@users.noreply.github.com>`；`LICENSE` 版权人改为 GitHub handle；历史 tag v0.1.0~v0.1.9 随重写同步更新
+- 本仓 `.git/config` 固化 GitHub 专用代理 `http.https://github.com.proxy = http://127.0.0.1:7897`（本地私有，不入库）— 修复无代理直连 github 的 GnuTLS/HTTP2 断流
 
 ### Fixed
 - `TESS_PORT` 未传导：`start_server.sh` 曾硬编码 `PORT=8000`，`TESS_PORT` 只影响健康检查 URL（换端口必假失败）→ 现两脚本同读 `TESS_PORT`

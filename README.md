@@ -33,7 +33,7 @@ cp configs/paths.example.sh configs/local.sh && $EDITOR configs/local.sh
 | `status` | 状态（managed / 外部启动 / 僵尸 pidfile）+ `/health` 探活 + 模型文件校验 + 局域网/广域网地址（广域网需端口转发；**服务无鉴权，暴露需谨慎**） |
 | `health` | 仅 `GET /health` |
 | `logs` | 跟踪服务日志（`tail -f`） |
-| `download [目录]` | 下载/校验模型；指定非默认目录时提示与 `TESS_MODEL_DIR` 差异 |
+| `download [目录] [tag]` | 下载/校验模型；环境感知选型菜单（按 GPU 显存标注推荐/紧张/不推荐，tag: `q4km`/`q6k`/`q8_0`/`mmproj`）；选定自动写回 `configs/local.sh` 并对 `start` 生效 |
 
 ### 配置覆盖
 
@@ -51,6 +51,8 @@ tracked 文件不含机器路径）；同名环境变量优先级更高。
 | 日志轮转阈值（字节） | `TESS_LOG_MAX_BYTES` | `10485760`（10MB） |
 | 日志轮转保留份数 | `TESS_LOG_KEEP` | `3` |
 | download 磁盘预检下限（GB） | `TESS_DL_MIN_GB` | `20` |
+| 主模型文件名 | `TESS_MAIN_GGUF` | `Tess-4.5-27B-Q4_K_M.gguf`（选型菜单自动写回） |
+| mtp draft 文件名 | `TESS_DRAFT_GGUF` | `mtp-Tess-4.5-27B-Q4_K_M.gguf`（设空 = 无 draft，不加 `--spec-type`） |
 
 > `start` 内置端口预检：端口被其他进程占用时直接失败并提示换 `TESS_PORT`；
 > `server.log` 超阈值自动轮转为 `server.log.1`（滚动保留 `TESS_LOG_KEEP` 份）。
