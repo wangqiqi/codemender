@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [v0.1.9] - 2026-11-13
+
 ### Added
 - `onekey_start.sh`（SPRINT-03）：一键运维入口 — `start/stop/restart/status/health/logs` 服务管理（nohup 后台 + pidfile + `logs/server.log`，status 区分运行/停止/僵尸 pidfile，stop 优雅 TERM→KILL），交互菜单 + CLI 子命令双模
 - `LICENSE`（MIT）：公开发布准备；README 新增 License 节（注明模型权重许可见上游）
