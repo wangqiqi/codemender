@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- `docs/build-llamacpp.md`：llama.cpp 从源码构建指南（CUDA · pin b9478 保 draft-mtp · 安装接线 · 常见坑速查）；README 快速开始挂链接；verify.sh 登记该文档存在性
 - onekey `start` 端口预检：端口被其他进程占用时直接失败并提示 `TESS_PORT` 换端口（bash `/dev/tcp` 探测，无外部依赖）
 - 日志轮转：`TESS_LOG_MAX_BYTES`（默认 10MB）/ `TESS_LOG_KEEP`（默认 3）— `server.log` 超阈值自动轮转为 `server.log.1`
 

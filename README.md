@@ -6,6 +6,8 @@
 
 ## 快速开始
 
+> 本机没有编译好的 `llama-server` 二进制？先看 [`docs/build-llamacpp.md`](build-llamacpp.md)（CUDA 从源码构建，pin b9478 支持 draft-mtp）。
+
 ```bash
 # 0) 首次使用：配置本机路径（不入库）
 cp configs/paths.example.sh configs/local.sh && $EDITOR configs/local.sh
