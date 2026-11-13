@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# onekey_start.sh L1 验收：语法 + 子命令 dispatch 冒烟（不真启停服务）
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ONEKEY="$ROOT/onekey_start.sh"
+
+fail() { echo "FAIL: $*" >&2; exit 1; }
+
+[ -f "$ONEKEY" ] || fail "missing $ONEKEY"
+[ -x "$ONEKEY" ] || fail "$ONEKEY not executable"
+
+bash -n "$ONEKEY" || fail "syntax error"
+
+# help 冒烟（两个入口都要能跑）
+"$ONEKEY" help >/dev/null || fail "help failed"
+"$ONEKEY" --help >/dev/null || fail "--help failed"
+
+# status 冒烟（只读，不改状态；退出码 0/3/4 均合法：running/stopped/异常）
+rc=0
+"$ONEKEY" status >/dev/null || rc=$?
+case "$rc" in
+    0|3|4) ;;
+    *) fail "status exit=$rc (期望 0/3/4)" ;;
+esac
+
+# dispatch 覆盖：服务管理子命令须有实现函数
+for fn in cmd_start cmd_stop cmd_restart cmd_status cmd_health cmd_logs; do
+    grep -q "^${fn}()" "$ONEKEY" || fail "missing function ${fn}"
+done
+
+# 未知命令须非零退出
+if "$ONEKEY" __no_such_cmd__ >/dev/null 2>&1; then
+    fail "unknown command should exit non-zero"
+fi
+
+echo "OK verify_onekey (L1)"
