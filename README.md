@@ -42,7 +42,7 @@ Harness 填表见根目录 `env.example`。
 ./onekey_start.sh status       # 状态 + 健康检查 + 模型文件校验
 ./onekey_start.sh stop         # 优雅停止（TERM → 超时 KILL）
 ./onekey_start.sh restart      # 重启（幂等）
-./onekey_start.sh download     # 下载/校验模型（hf CLI，断点续传）
+./onekey_start.sh download     # 下载/校验模型（hf CLI，断点续传；可加目标目录参数）
 ```
 
 | 覆盖项 | 环境变量 | 配置来源 |
@@ -53,4 +53,4 @@ Harness 填表见根目录 `env.example`。
 | 下载源 | `HF_ENDPOINT` | 默认 `https://hf-mirror.com` |
 | 启动就绪等待 | `TESS_START_WAIT` | 默认 `180`（秒） |
 
-说明：真实本机路径统一放 `configs/local.sh`（复制 `configs/paths.example.sh` 填写，已被 `.gitignore` 忽略），tracked 文件不含机器路径；`download` 自动剔除非法 `ALL_PROXY=socks://`；`start` 前会先校验模型文件，缺失时提示先 `download`。
+说明：真实本机路径统一放 `configs/local.sh`（复制 `configs/paths.example.sh` 填写，已被 `.gitignore` 忽略），tracked 文件不含机器路径；`download [目录]` 可指定下载目录（缺省 `TESS_MODEL_DIR`），指定非默认目录时下载完会提示与 `TESS_MODEL_DIR` 的差异；`download` 自动剔除非法 `ALL_PROXY=socks://`；`start` 前会先校验模型文件，缺失时提示先 `download`。

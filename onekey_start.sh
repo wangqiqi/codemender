@@ -14,8 +14,10 @@ if [ -f "${ROOT}/configs/local.sh" ]; then
 fi
 LLAMA_BIN="${LLAMA_SERVER_BIN:-}"
 MODEL_DIR="${TESS_MODEL_DIR:-}"
-MODEL="${MODEL_DIR:+${MODEL_DIR}/Tess-4.5-27B-Q4_K_M.gguf}"
-MTP_DRAFT="${MODEL_DIR:+${MODEL_DIR}/mtp-Tess-4.5-27B-Q4_K_M.gguf}"
+MAIN_GGUF="Tess-4.5-27B-Q4_K_M.gguf"
+DRAFT_GGUF="mtp-Tess-4.5-27B-Q4_K_M.gguf"
+MODEL="${MODEL_DIR:+${MODEL_DIR}/${MAIN_GGUF}}"
+MTP_DRAFT="${MODEL_DIR:+${MODEL_DIR}/${DRAFT_GGUF}}"
 PORT="${TESS_PORT:-8000}"
 BASE_URL="http://localhost:${PORT}"
 # 下载源：默认 hf-mirror.com，可 HF_ENDPOINT 覆盖
@@ -59,12 +61,13 @@ health_ok() {
 }
 
 check_models() {
-    if [ -z "$MODEL_DIR" ]; then
+    local dir="${1:-$MODEL_DIR}"
+    if [ -z "$dir" ]; then
         warn "未配置 TESS_MODEL_DIR — 复制 configs/paths.example.sh → configs/local.sh"
         return 1
     fi
     local missing=0 f
-    for f in "$MODEL" "$MTP_DRAFT"; do
+    for f in "${dir}/${MAIN_GGUF}" "${dir}/${DRAFT_GGUF}"; do
         if [ -f "$f" ]; then
             ok "模型文件就绪: $f"
         else
@@ -212,21 +215,29 @@ cmd_logs() {
 }
 
 # ── 模型下载 ────────────────────────────────────────────────────────
+# 用法: download [目标目录] — 缺省用 configs/local.sh 的 TESS_MODEL_DIR
 cmd_download() {
-    require_config || return 1
+    local dl_dir="${1:-$MODEL_DIR}"
+    if [ -z "$dl_dir" ]; then
+        fail "未指定下载目录 — 用法: ./onekey_start.sh download <目录>，或先配置 configs/local.sh 的 TESS_MODEL_DIR"
+        return 1
+    fi
     command -v hf >/dev/null 2>&1 || { fail "未找到 hf CLI（pip install -U huggingface_hub）"; return 1; }
+    mkdir -p "$dl_dir"
     local ts
     ts="$(date +%Y%m%d_%H%M%S)"
     local dl_log="${LOG_DIR}/download-${ts}.log"
-    msg "下载仓库: ${HF_REPO} → ${MODEL_DIR}"
+    msg "下载仓库: ${HF_REPO} → ${dl_dir}"
     msg "下载源: ${HF_ENDPOINT_VAL} · 日志: logs/download-${ts}.log（断点续传，可重复执行）"
     # 规避 socks 代理坑：ALL_PROXY=socks:// 会被 httpx 判为非法 → 显式剔除
     env -u ALL_PROXY -u all_proxy HF_ENDPOINT="$HF_ENDPOINT_VAL" \
-        hf download "$HF_REPO" \
-        "$(basename "$MODEL")" "$(basename "$MTP_DRAFT")" \
-        --local-dir "$MODEL_DIR" 2>&1 | tee "$dl_log"
-    if check_models; then
-        ok "模型下载完成并校验通过"
+        hf download "$HF_REPO" "$MAIN_GGUF" "$DRAFT_GGUF" \
+        --local-dir "$dl_dir" 2>&1 | tee "$dl_log"
+    if check_models "$dl_dir"; then
+        ok "模型下载完成并校验通过: ${dl_dir}"
+        if [ "$dl_dir" != "$MODEL_DIR" ]; then
+            msg "提示: 服务默认从 TESS_MODEL_DIR 加载模型（${MODEL_DIR:-未配置}）— 要服务此目录请更新 configs/local.sh"
+        fi
     else
         fail "下载后仍缺模型文件 — 查看日志: logs/download-${ts}.log"
         return 1
@@ -256,7 +267,10 @@ cmd_menu() {
             4) cmd_status  || true ;;
             5) cmd_health  || true ;;
             6) cmd_logs    || true ;;
-            7) cmd_download || true ;;
+            7)
+                read -r -p "下载目录 [回车=${MODEL_DIR:-未配置}]: " dldir
+                cmd_download "$dldir" || true
+                ;;
             h|help) usage ;;
             q|quit|exit) echo "再见。"; break ;;
             *) echo "无效选项: ${choice}" ;;
@@ -278,7 +292,7 @@ usage() {
   logs              跟踪服务日志（tail -f）
 
 模型:
-  download          下载主模型 + MTP draft（hf CLI，断点续传）
+  download [目录]   下载主模型 + MTP draft（hf CLI，断点续传；缺省目录见 configs/local.sh）
 
 其他:
   help              本帮助
@@ -293,7 +307,7 @@ run_cmd() {
         status)  cmd_status ;;
         health)  cmd_health ;;
         logs)    cmd_logs ;;
-        download) cmd_download ;;
+        download) cmd_download "${2:-}" ;;
         menu)    cmd_menu ;;
         help|-h|--help) usage ;;
         *)
