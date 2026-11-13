@@ -24,7 +24,7 @@ case "$rc" in
 esac
 
 # dispatch 覆盖：服务管理子命令须有实现函数
-for fn in cmd_start cmd_stop cmd_restart cmd_status cmd_health cmd_logs; do
+for fn in cmd_start cmd_stop cmd_restart cmd_status cmd_health cmd_logs cmd_download; do
     grep -q "^${fn}()" "$ONEKEY" || fail "missing function ${fn}"
 done
 

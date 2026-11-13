@@ -193,6 +193,27 @@ cmd_logs() {
     tail -n 50 -f "$LOG_FILE"
 }
 
+# ── 模型下载 ────────────────────────────────────────────────────────
+cmd_download() {
+    command -v hf >/dev/null 2>&1 || { fail "未找到 hf CLI（pip install -U huggingface_hub）"; return 1; }
+    local ts
+    ts="$(date +%Y%m%d_%H%M%S)"
+    local dl_log="${LOG_DIR}/download-${ts}.log"
+    msg "下载仓库: ${HF_REPO} → ${MODEL_DIR}"
+    msg "下载源: ${HF_ENDPOINT_VAL} · 日志: logs/download-${ts}.log（断点续传，可重复执行）"
+    # 规避 socks 代理坑：ALL_PROXY=socks:// 会被 httpx 判为非法 → 显式剔除
+    env -u ALL_PROXY -u all_proxy HF_ENDPOINT="$HF_ENDPOINT_VAL" \
+        hf download "$HF_REPO" \
+        "$(basename "$MODEL")" "$(basename "$MTP_DRAFT")" \
+        --local-dir "$MODEL_DIR" 2>&1 | tee "$dl_log"
+    if check_models; then
+        ok "模型下载完成并校验通过"
+    else
+        fail "下载后仍缺模型文件 — 查看日志: logs/download-${ts}.log"
+        return 1
+    fi
+}
+
 # ── dispatch（TASK-003 补交互菜单）─────────────────────────────────
 usage() {
     cat <<'EOF'
@@ -222,6 +243,7 @@ run_cmd() {
         status)  cmd_status ;;
         health)  cmd_health ;;
         logs)    cmd_logs ;;
+        download) cmd_download ;;
         help|-h|--help) usage ;;
         *) 
             if [ "$#" -eq 0 ]; then
