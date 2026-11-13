@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [v0.1.25] - 2026-11-13
+
+### Changed
+- **SPRINT-09 · ubatch 默认 512→2048**（`TESS_UBATCH` 可调）：实测生成 200tok 1.8s→1.3s（**提速 ~28%**）· 显存 +888MiB；实测数据 → `bench/efficiency-report.md`
+- 实验结论记档：KV q5_1 **不启用**（生成慢 3.3× 显存仅省 0.75GB — 双输）；`--cache-reuse` **不配置**（默认 prompt cache 已自带 89× 重复前缀加速：6535ms→74ms）；128K 维持不可行（q8_0 OOM · q5_1 慢 3×）
+
 ## [v0.1.24] - 2026-11-13
 
 ### Changed

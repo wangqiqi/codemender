@@ -6,7 +6,7 @@ set -euo pipefail
 # 本机私有路径：configs/local.sh（gitignored）→ 环境变量覆盖；tracked 文件零字面路径
 # 契约：同名环境变量优先级高于 local.sh — source 前保存外部导出值，source 后恢复（与 onekey_start.sh 同源）
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-_env_keys="LLAMA_SERVER_BIN TESS_MODEL_DIR TESS_PORT TESS_MAIN_GGUF TESS_DRAFT_GGUF TESS_MMPROJ TESS_CTX TESS_API_KEY TESS_MMPROJ_OFFLOAD TESS_KV_CACHE_TYPE"
+_env_keys="LLAMA_SERVER_BIN TESS_MODEL_DIR TESS_PORT TESS_MAIN_GGUF TESS_DRAFT_GGUF TESS_MMPROJ TESS_CTX TESS_API_KEY TESS_MMPROJ_OFFLOAD TESS_KV_CACHE_TYPE TESS_UBATCH"
 _env_saved=""
 for _k in ${_env_keys}; do
     if [ -n "${!_k+x}" ]; then
@@ -82,6 +82,8 @@ KV_TYPE="${TESS_KV_CACHE_TYPE:-q8_0}"
 if [ -n "$KV_TYPE" ] && [ "$KV_TYPE" != "native" ]; then
     ARGS+=(--cache-type-k "$KV_TYPE" --cache-type-v "$KV_TYPE")
 fi
+# ubatch 物理批（默认 2048：实测生成提速 ~28% · 显存 +~0.9GB）；TESS_UBATCH=512 可切回保守
+ARGS+=(--ubatch-size "${TESS_UBATCH:-2048}")
 if [ -n "$MMProj" ]; then
     ARGS+=(--mmproj "$MMProj")
     # 视觉投影器驻留策略：默认 CPU（省 ~1.2GB 显存 · 平时代码为主）；TESS_MMPROJ_OFFLOAD=1 切 GPU 加速出图

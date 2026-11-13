@@ -102,6 +102,7 @@ tracked 文件不含机器路径）；同名环境变量优先级更高。
 | KV cache 量化 | `TESS_KV_CACHE_TYPE` | `q8_0`（显存减半 · 实测无速度损失；`native` 切回原精度） |
 | API 鉴权（缺省关闭） | `TESS_API_KEY` | 未设 = 无鉴权；设置后客户端需 OpenAI Bearer（**公网暴露前必做**） |
 | 显存预检安全余量（MiB） | `TESS_VRAM_HEADROOM_MB` | `1024`（预检按「选型需求+余量」判定；本服务占用在 restart 中计为可回收） |
+| 物理 batch 大小 | `TESS_UBATCH` | `2048`（默认；实测生成提速 ~28%；`512` 切回保守省 0.9GB 显存） |
 
 > `start` 内置端口预检；`server.log` 超阈值自动轮转（滚动保留 `TESS_LOG_KEEP` 份）。
 >
