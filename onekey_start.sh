@@ -9,7 +9,7 @@ cd "$ROOT"
 
 # ── 配置：configs/local.sh（gitignored）→ 环境变量覆盖；tracked 文件零字面路径 ──
 # 契约：同名环境变量优先级高于 local.sh — source 前保存外部导出值，source 后恢复
-_env_keys="LLAMA_SERVER_BIN TESS_MODEL_DIR TESS_PORT HF_ENDPOINT TESS_START_WAIT TESS_STOP_WAIT TESS_LOG_MAX_BYTES TESS_LOG_KEEP TESS_DL_MIN_GB TESS_MAIN_GGUF TESS_DRAFT_GGUF TESS_MMPROJ TESS_CTX TESS_API_KEY TESS_VRAM_HEADROOM_MB"
+_env_keys="LLAMA_SERVER_BIN TESS_MODEL_DIR TESS_PORT HF_ENDPOINT TESS_START_WAIT TESS_STOP_WAIT TESS_LOG_MAX_BYTES TESS_LOG_KEEP TESS_DL_MIN_GB TESS_MAIN_GGUF TESS_DRAFT_GGUF TESS_MMPROJ TESS_CTX TESS_API_KEY TESS_VRAM_HEADROOM_MB TESS_MMPROJ_OFFLOAD"
 _env_saved=""
 for _k in ${_env_keys}; do
     if [ -n "${!_k+x}" ]; then
@@ -377,7 +377,11 @@ cmd_status() {
         echo "  鉴权     : 未启用 — 设 TESS_API_KEY 开启（公网暴露前必做）"
     fi
     if [ -n "${TESS_MMPROJ:-}" ]; then
-        echo "  视觉     : 启用（TESS_MMPROJ=${TESS_MMPROJ}）"
+        if [ "${TESS_MMPROJ_OFFLOAD:-0}" = "1" ]; then
+            echo "  视觉     : 启用（GPU 加速 · TESS_MMPROJ_OFFLOAD=1）"
+        else
+            echo "  视觉     : 启用（CPU 驻留省显存 · GPU 加速可设 TESS_MMPROJ_OFFLOAD=1）"
+        fi
     else
         echo "  视觉     : 未启用（下载 mmproj 后设 TESS_MMPROJ=1 开启）"
     fi

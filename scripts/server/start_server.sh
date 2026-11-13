@@ -6,7 +6,7 @@ set -euo pipefail
 # 本机私有路径：configs/local.sh（gitignored）→ 环境变量覆盖；tracked 文件零字面路径
 # 契约：同名环境变量优先级高于 local.sh — source 前保存外部导出值，source 后恢复（与 onekey_start.sh 同源）
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-_env_keys="LLAMA_SERVER_BIN TESS_MODEL_DIR TESS_PORT TESS_MAIN_GGUF TESS_DRAFT_GGUF TESS_MMPROJ TESS_CTX TESS_API_KEY"
+_env_keys="LLAMA_SERVER_BIN TESS_MODEL_DIR TESS_PORT TESS_MAIN_GGUF TESS_DRAFT_GGUF TESS_MMPROJ TESS_CTX TESS_API_KEY TESS_MMPROJ_OFFLOAD"
 _env_saved=""
 for _k in ${_env_keys}; do
     if [ -n "${!_k+x}" ]; then
@@ -79,6 +79,12 @@ ARGS=(
 )
 if [ -n "$MMProj" ]; then
     ARGS+=(--mmproj "$MMProj")
+    # 视觉投影器驻留策略：默认 CPU（省 ~1.2GB 显存 · 平时代码为主）；TESS_MMPROJ_OFFLOAD=1 切 GPU 加速出图
+    if [ "${TESS_MMPROJ_OFFLOAD:-0}" = "1" ]; then
+        ARGS+=(--mmproj-offload)
+    else
+        ARGS+=(--no-mmproj-offload)
+    fi
 fi
 # API 鉴权（可选）：TESS_API_KEY 设置 → --api-key（客户端走 OpenAI Bearer）
 if [ -n "${TESS_API_KEY:-}" ]; then
