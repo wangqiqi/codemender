@@ -7,11 +7,15 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
-# ── 配置（可用环境变量覆盖）─────────────────────────────────────────
-LLAMA_BIN="${LLAMA_SERVER_BIN:-/home/user/install/llama/bin/llama-server}"
-MODEL_DIR="${TESS_MODEL_DIR:-/media/user/data/models/tess-4.5-27b}"
-MODEL="${MODEL_DIR}/Tess-4.5-27B-Q4_K_M.gguf"
-MTP_DRAFT="${MODEL_DIR}/mtp-Tess-4.5-27B-Q4_K_M.gguf"
+# ── 配置：configs/local.sh（gitignored）→ 环境变量覆盖；tracked 文件零字面路径 ──
+if [ -f "${ROOT}/configs/local.sh" ]; then
+    # shellcheck source=configs/local.sh
+    source "${ROOT}/configs/local.sh"
+fi
+LLAMA_BIN="${LLAMA_SERVER_BIN:-}"
+MODEL_DIR="${TESS_MODEL_DIR:-}"
+MODEL="${MODEL_DIR:+${MODEL_DIR}/Tess-4.5-27B-Q4_K_M.gguf}"
+MTP_DRAFT="${MODEL_DIR:+${MODEL_DIR}/mtp-Tess-4.5-27B-Q4_K_M.gguf}"
 PORT="${TESS_PORT:-8000}"
 BASE_URL="http://localhost:${PORT}"
 # 下载源：默认 hf-mirror.com，可 HF_ENDPOINT 覆盖
@@ -55,6 +59,10 @@ health_ok() {
 }
 
 check_models() {
+    if [ -z "$MODEL_DIR" ]; then
+        warn "未配置 TESS_MODEL_DIR — 复制 configs/paths.example.sh → configs/local.sh"
+        return 1
+    fi
     local missing=0 f
     for f in "$MODEL" "$MTP_DRAFT"; do
         if [ -f "$f" ]; then
@@ -67,11 +75,21 @@ check_models() {
     return "$missing"
 }
 
+require_config() {
+    if [ -z "$LLAMA_BIN" ] || [ -z "$MODEL_DIR" ]; then
+        fail "未配置本机路径 — 复制 configs/paths.example.sh → configs/local.sh 并填写，或导出 LLAMA_SERVER_BIN / TESS_MODEL_DIR"
+        return 1
+    fi
+}
+
 # ── 服务管理 ────────────────────────────────────────────────────────
 cmd_start() {
     if health_ok; then
         ok "服务已在运行: ${BASE_URL} (pid $(find_server_pid || echo '?'))"
         return 0
+    fi
+    if ! require_config; then
+        return 1
     fi
     if ! check_models; then
         fail "模型文件缺失 — 请先运行: ./onekey_start.sh download"
@@ -195,6 +213,7 @@ cmd_logs() {
 
 # ── 模型下载 ────────────────────────────────────────────────────────
 cmd_download() {
+    require_config || return 1
     command -v hf >/dev/null 2>&1 || { fail "未找到 hf CLI（pip install -U huggingface_hub）"; return 1; }
     local ts
     ts="$(date +%Y%m%d_%H%M%S)"

@@ -45,12 +45,12 @@ Harness 填表见根目录 `env.example`。
 ./onekey_start.sh download     # 下载/校验模型（hf CLI，断点续传）
 ```
 
-| 覆盖项 | 环境变量 | 默认 |
-|--------|----------|------|
-| 端口 | `TESS_PORT` | `8000` |
-| 模型目录 | `TESS_MODEL_DIR` | `/media/user/data/models/tess-4.5-27b` |
-| llama-server 路径 | `LLAMA_SERVER_BIN` | `/home/user/install/llama/bin/llama-server` |
-| 下载源 | `HF_ENDPOINT` | `https://hf-mirror.com` |
-| 启动就绪等待 | `TESS_START_WAIT` | `180`（秒） |
+| 覆盖项 | 环境变量 | 配置来源 |
+|--------|----------|----------|
+| 端口 | `TESS_PORT` | 默认 `8000` |
+| 模型目录 | `TESS_MODEL_DIR` | `configs/local.sh`（本地私有 · 不入库） |
+| llama-server 路径 | `LLAMA_SERVER_BIN` | `configs/local.sh`（本地私有 · 不入库） |
+| 下载源 | `HF_ENDPOINT` | 默认 `https://hf-mirror.com` |
+| 启动就绪等待 | `TESS_START_WAIT` | 默认 `180`（秒） |
 
-说明：`download` 自动剔除非法 `ALL_PROXY=socks://`；`start` 前会先校验模型文件，缺失时提示先 `download`。
+说明：真实本机路径统一放 `configs/local.sh`（复制 `configs/paths.example.sh` 填写，已被 `.gitignore` 忽略），tracked 文件不含机器路径；`download` 自动剔除非法 `ALL_PROXY=socks://`；`start` 前会先校验模型文件，缺失时提示先 `download`。

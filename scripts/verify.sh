@@ -9,4 +9,11 @@ test -x "$ROOT/bench/run_bench.sh"
 test -x "$ROOT/scripts/batch_review.sh"
 bash "$ROOT/scripts/verify_task007.sh"
 bash "$ROOT/scripts/verify_onekey.sh"
+# 隐私门禁（防回退）：tracked 文件禁止本机用户名绝对路径（模式拼接避免自匹配）
+privacy_pat='/home/jw''zhou|/media/jw''zhou'
+if git -C "$ROOT" grep -nE "$privacy_pat" -- ':!.cursor' >/dev/null 2>&1; then
+    echo "FAIL tracked files contain machine paths — 移入 configs/local.sh"
+    git -C "$ROOT" grep -nE "$privacy_pat" -- ':!.cursor'
+    exit 1
+fi
 echo "OK verify (core files present)"

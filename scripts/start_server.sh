@@ -3,8 +3,17 @@
 # 端点: http://localhost:8000/v1 (OpenAI 兼容，无鉴权，供 DeepSeek Harness 调用)
 set -euo pipefail
 
-LLAMA_BIN="/home/user/install/llama/bin/llama-server"
-MODEL_DIR="/media/user/data/models/tess-4.5-27b"
+# 本机私有路径：configs/local.sh（gitignored）→ 环境变量覆盖；tracked 文件零字面路径
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "${SCRIPT_DIR}/../configs/local.sh" ]; then
+    # shellcheck source=../configs/local.sh
+    source "${SCRIPT_DIR}/../configs/local.sh"
+fi
+LLAMA_BIN="${LLAMA_SERVER_BIN:-}"
+MODEL_DIR="${TESS_MODEL_DIR:-}"
+: "${LLAMA_BIN:?缺少 LLAMA_SERVER_BIN — 复制 configs/paths.example.sh → configs/local.sh 或导出环境变量}"
+: "${MODEL_DIR:?缺少 TESS_MODEL_DIR — 复制 configs/paths.example.sh → configs/local.sh 或导出环境变量}"
+
 MODEL="${MODEL_DIR}/Tess-4.5-27B-Q4_K_M.gguf"
 MTP_DRAFT="${MODEL_DIR}/mtp-Tess-4.5-27B-Q4_K_M.gguf"
 PORT=8000

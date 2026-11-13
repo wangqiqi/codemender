@@ -12,6 +12,7 @@ venv/
 
 # 敏感配置（API Key 等）
 configs/*.local.yaml
+configs/local.sh
 .env
 
 # 工作副本（plan/archive/learn 不入库）
