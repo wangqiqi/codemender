@@ -17,3 +17,6 @@ configs/local.sh
 
 # 工作副本（plan/archive/learn 不入库）
 .growing/
+
+# 批量审查运行产物（不入库；后续迁至 .growing/）
+scripts/.batch-review/

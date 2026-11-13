@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Changed
+- `bench/quality-speed-report.md` 入库（SPRINT-11 定论：投机参数默认最优 · Q8/imatrix 路线否决记录 · GPU persistence 待回填）；`.gitignore` 增补批量审查产物目录
+
+## [v0.1.26] - 2026-11-14
+
 ### Added
 - **分层 KV 卸载可选档**（`TESS_KV_CPU_LAYERS` · 默认 0）：第 N 层起 KV→CPU（`--no-kv-unified` + `-ot`）— 128K 大上下文可行但速度损失大（4.6~40s/200tok）且自动禁用 draft-mtp（`-ot` 误伤 draft 权重实测段错误）；**默认维持 64K 全 GPU**（实测无甜点）；数据 → `bench/kv-offload-report.md`
 
