@@ -1,11 +1,21 @@
 # CHANGELOG
 
+## [v0.1.8] - 2026-11-13
+
+### Added
+- `scripts/verify_task007.sh`：工具链验收（模板 + `batch_review.sh --dry-run`）
+- SPRINT-02 闭环：TASK-007 试运行审查本仓 `scripts/`（3 文件、0 失败；报告目录 `.growing/trial-batch-review-TASK007/`）
+
+### Changed
+- `scripts/verify.sh` 聚合 TASK-007 验收
+- `README.md` 快速开始与目录说明
+
 ## [v0.1.7] - 2026-11-13
 
 ### Added
 - `env.example`：DeepSeek Harness「自定义模型 API」填表对照（本机 `tess-local` / `:8000/v1`）
 - `templates/code_review_prompt.md`、`templates/optimize_prompt.md`：本机审查/优化 prompt 模板
-- `scripts/batch_review.sh`：对本机项目源码批量调用 Tess API 生成审查报告（TASK-007 进行中）
+- `scripts/batch_review.sh`：对本机项目源码批量调用 Tess API 生成审查报告
 
 ## [v0.1.6] - 2026-11-13
 

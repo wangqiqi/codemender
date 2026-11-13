@@ -7,4 +7,5 @@ for f in scripts/start_server.sh scripts/batch_review.sh bench/run_bench.sh env.
 done
 test -x "$ROOT/bench/run_bench.sh"
 test -x "$ROOT/scripts/batch_review.sh"
+bash "$ROOT/scripts/verify_task007.sh"
 echo "OK verify (core files present)"
