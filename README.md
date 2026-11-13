@@ -1,4 +1,4 @@
-# Bigmodel — Tess-4.5-27B 本机大模型 API
+# Codemender — Tess-4.5-27B 本机大模型 API
 
 基于 **Tess-4.5-27B**（Qwen3.6-27B 微调，自带 MTP draft head）在 RTX 4090 上部署的
 本机大模型服务：OpenAI 兼容端点 `http://localhost:8000/v1`（模型 `tess-4.5-27b`），

@@ -180,7 +180,7 @@ cmd_status() {
             detail="pid ${pid} (外部启动，无 pidfile)"
         fi
     fi
-    echo "═══ Tess-4.5-27B 服务状态 ═══"
+    echo "═══ Codemender 服务状态 ═══"
     echo "  状态     : ${state}"
     echo "  端点     : ${BASE_URL}/v1 (model: tess-4.5-27b)"
     if [ -n "$detail" ]; then
@@ -248,7 +248,7 @@ cmd_download() {
 cmd_menu() {
     while true; do
         echo ""
-        echo "======== Tess-4.5-27B 一键运维 ========"
+        echo "======== Codemender 一键运维 ========"
         echo " 1) start      启动服务（后台 + 就绪等待）"
         echo " 2) stop       停止服务（优雅 TERM → KILL）"
         echo " 3) restart    重启服务"
