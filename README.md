@@ -110,9 +110,11 @@ tracked 文件不含机器路径）；同名环境变量优先级更高。
 ```bash
 bash scripts/server/start_server.sh              # 前台启动（调试用；路径同样读 configs/local.sh）
 bash scripts/review/batch_review.sh <项目目录>   # 批量代码审查（调用本机 API）
+bash scripts/review/batch_review.sh -i <图片目录|文件列表>   # 批量视觉审查（截图/设计稿 → UI 走查报告）
 ```
 
-审查/优化 prompt 模板见 `templates/`。
+审查/优化 prompt 模板见 `templates/`（含视觉审查模板 `image_review_prompt.md`）；
+支持 `TESS_API_KEY` 鉴权透传；单图报告 + `index.md` 汇总输出到 `.batch-review/<时间戳>/`。
 
 ## 📁 目录结构
 

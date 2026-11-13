@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+## [v0.1.22] - 2026-11-13
+
+### Added
+- **SPRINT-07 · batch_review 图片模式**：`batch_review.sh -i <图片目录|文件列表>` — 截图/设计稿批量视觉审查（OpenAI `image_url` base64 格式 · 新模板 `templates/image_review_prompt.md`：层次/可读性/对比度/一致性/交互疑点/空错态）；`max_tokens=1024` 防 thinking 吞空；`TESS_API_KEY` Bearer 透传；失败写报告行不腰斩
+- 实测：合成缺陷 UI 截图 → 7 条问题全中预埋 3 缺陷 + 额外布局/文案问题（严重度排序正确）
+
+### Fixed
+- batch_review 输出目录被 `${OUT%\/*}` 误剥一级路径（`/tmp/mock-review`→`/tmp`）— 删除该残留行
+
 ## [v0.1.21] - 2026-11-13
 
 ### Fixed
