@@ -52,4 +52,14 @@ grep -q 'TESS_LOG_KEEP' "$ONEKEY" || fail "missing TESS_LOG_KEEP"
 grep -q '_env_saved' "$ONEKEY" || fail "onekey 缺 env 优先恢复逻辑"
 grep -q '_env_saved' "$START_SH" || fail "start_server.sh 缺 env 优先恢复逻辑"
 
+# 边界加固：pid 校验 / 身份校验 / flock / 数值容错 / 跨平台轮转（防回退）
+grep -q "^pid_is_llama()" "$ONEKEY" || fail "missing function pid_is_llama"
+grep -q "^service_alias_ok()" "$ONEKEY" || fail "missing function service_alias_ok"
+grep -q "^int_or()" "$ONEKEY" || fail "missing function int_or"
+grep -q "^_spawn_and_wait()" "$ONEKEY" || fail "missing function _spawn_and_wait"
+grep -q 'flock' "$ONEKEY" || fail "missing flock start lock"
+grep -q 'wc -c' "$ONEKEY" || fail "rotate 应使用跨平台 wc -c（GNU stat 不可移植）"
+grep -q "tr '\\\\0'" "$ONEKEY" || fail "pid_is_llama 应解析 /proc cmdline"
+grep -q "trap ':' INT" "$ONEKEY" || fail "cmd_logs 缺 Ctrl-C 隔离"
+
 echo "OK verify_onekey (L1)"

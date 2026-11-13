@@ -13,6 +13,10 @@
 - `TESS_PORT` 未传导：`start_server.sh` 曾硬编码 `PORT=8000`，`TESS_PORT` 只影响健康检查 URL（换端口必假失败）→ 现两脚本同读 `TESS_PORT`
 - 环境变量优先契约失真：`configs/local.sh` 的 `export` 会在 `source` 时静默覆盖外部同名环境变量 → source 前保存、source 后恢复外部值（`onekey_start.sh` 与 `start_server.sh` 同源同修）
 - `start` 误删活服务 pidfile：模型加载中（`/health` 未就绪）执行 start 曾清掉 pidfile → 现仅当进程确实已死才清残留
+- **stop 误杀防护**：pidfile pid 被系统复用给非 llama-server → 识别并忽略（warn），不再盲杀；kill 前校验 `/proc/<pid>/cmdline`；`MODEL` 未配置时禁用 pgrep 回退（fail-closed，防匹配本机任意 llama-server）
+- `download` 的 hf 失败/中断不再被 `set -e` 腰斩 — 现给出「断点续传可重试」指引并保留日志路径
+- `start` 的 `/health` 短路增加模型身份校验（`/v1/models` alias）— 端口被其他模型实例占用时明确报错而非误报「已在运行」
+- 边界加固：数值 env 非数字回退默认（`int_or`）；轮转改 `wc -c`（跨平台）；`flock` 启动锁防并发双实例；`logs` 的 Ctrl-C 只退跟踪不退脚本/菜单；菜单 EOF（Ctrl-D）优雅退出
 
 ## [v0.1.9] - 2026-11-13
 

@@ -44,10 +44,18 @@ HF_REPO="migtissera/Tess-4.5-27B-GGUF"
 LOG_DIR="${ROOT}/logs"
 PID_FILE="${LOG_DIR}/llama-server.pid"
 LOG_FILE="${LOG_DIR}/server.log"
-START_WAIT_SECS="${TESS_START_WAIT:-180}"   # 模型加载 16.5GB，给足时间
-STOP_WAIT_SECS="${TESS_STOP_WAIT:-60}"      # 卸载大模型也需时间
-LOG_MAX_BYTES="${TESS_LOG_MAX_BYTES:-10485760}"  # 日志轮转阈值（默认 10MB）
-LOG_KEEP="${TESS_LOG_KEEP:-3}"              # 轮转保留份数（server.log.1 ~ .N）
+# 数值 env 容错：非数字 → 回退默认（防 test 报错刷屏与行为漂移）
+int_or() {
+    case "$2" in
+        ''|*[!0-9]*) echo "$1" ;;
+        *) echo "$2" ;;
+    esac
+}
+START_WAIT_SECS="$(int_or 180 "${TESS_START_WAIT:-180}")"    # 模型加载 16.5GB，给足时间
+STOP_WAIT_SECS="$(int_or 60 "${TESS_STOP_WAIT:-60}")"        # 卸载大模型也需时间
+LOG_MAX_BYTES="$(int_or 10485760 "${TESS_LOG_MAX_BYTES:-10485760}")"  # 日志轮转阈值（默认 10MB）
+LOG_KEEP="$(int_or 3 "${TESS_LOG_KEEP:-3}")"                 # 轮转保留份数（server.log.1 ~ .N）
+LOCK_FILE="${LOG_DIR}/onekey.lock"
 
 mkdir -p "$LOG_DIR"
 
@@ -70,13 +78,30 @@ pid_alive() {
     kill -0 "$pid" 2>/dev/null
 }
 
+# 校验 pid 确为 llama-server（防 pidfile 残留 pid 被系统复用后误杀无关进程）
+pid_is_llama() {
+    [ -r "/proc/$1/cmdline" ] || return 1
+    tr '\0' ' ' < "/proc/$1/cmdline" | grep -q "llama-server"
+}
+
 # 找到本项目的 llama-server 进程（含非本脚本启动的实例）
+# fail-closed：MODEL 未配置时禁用回退（防匹配本机任意 llama-server 误杀其他项目实例）
 find_server_pid() {
-    pgrep -f "llama-server .*--model ${MODEL}" 2>/dev/null | head -n 1
+    [ -n "$MODEL" ] || return 1
+    local p
+    p="$(pgrep -f "llama-server .*--model ${MODEL}" 2>/dev/null | head -n 1 || true)"
+    if [ -n "$p" ] && pid_is_llama "$p"; then
+        echo "$p"
+    fi
 }
 
 health_ok() {
     curl -sf --max-time 3 "${BASE_URL}/health" >/dev/null 2>&1
+}
+
+# 模型身份校验：/health 200 ≠ 本服务 — 防其他 llama-server（不同模型）占同端口被误认
+service_alias_ok() {
+    curl -sf --max-time 3 "${BASE_URL}/v1/models" 2>/dev/null | grep -q 'tess-4.5-27b'
 }
 
 # 端口占用探测（bash 内建 /dev/tcp，无外部依赖）
@@ -88,7 +113,8 @@ port_busy() {
 rotate_log() {
     [ -f "$LOG_FILE" ] || return 0
     local size
-    size="$(stat -c%s "$LOG_FILE" 2>/dev/null || echo 0)"
+    size="$(wc -c < "$LOG_FILE" 2>/dev/null || echo 0)"
+    size=$((size + 0))
     if [ "$size" -lt "$LOG_MAX_BYTES" ]; then
         return 0
     fi
@@ -131,7 +157,12 @@ require_config() {
 # ── 服务管理 ────────────────────────────────────────────────────────
 cmd_start() {
     if health_ok; then
-        ok "服务已在运行: ${BASE_URL} (pid $(find_server_pid || echo '?'))"
+        if service_alias_ok; then
+            ok "服务已在运行: ${BASE_URL} (pid $(find_server_pid || echo '?'))"
+        else
+            fail "端口 ${PORT} 上是别的模型服务（/health 200 但非 tess-4.5-27b）— 换端口: TESS_PORT=<port> ./onekey_start.sh start"
+            return 1
+        fi
         return 0
     fi
     if ! require_config; then
@@ -152,7 +183,29 @@ cmd_start() {
         warn "发现残留 pidfile（进程已死），清理后重启"
         rm -f "$PID_FILE"
     fi
+    # 启动锁：覆盖 端口检查→spawn 窗口，防并发双 start 竞态（flock 缺失时降级跳过）
+    local locked=0
+    if command -v flock >/dev/null 2>&1; then
+        exec 9>>"$LOCK_FILE"
+        if flock -n 9; then
+            locked=1
+        else
+            fail "另一个 start/stop 正在进行 — 稍后重试"
+            return 1
+        fi
+    fi
     rotate_log
+    local rc=0
+    if ! _spawn_and_wait; then
+        rc=1
+    fi
+    if [ "$locked" = 1 ]; then
+        exec 9>&-
+    fi
+    return "$rc"
+}
+
+_spawn_and_wait() {
     msg "启动 llama-server (port ${PORT}, ctx 32768, 全层 GPU offload)..."
     # start_server.sh 内部 exec → bash 的 PID 即 llama-server 的 PID
     nohup bash "$ROOT/scripts/start_server.sh" >"$LOG_FILE" 2>&1 &
@@ -182,7 +235,15 @@ cmd_start() {
 cmd_stop() {
     local pid=""
     pid="$(pid_from_file || true)"
-    if [ -z "$pid" ]; then
+    # pidfile pid 已死或被系统复用给非 llama-server → 视为残留，清理后走 pgrep 回退
+    if [ -n "$pid" ] && ! pid_is_llama "$pid"; then
+        if pid_alive "$pid"; then
+            warn "pidfile pid ${pid} 已被其他进程复用（非 llama-server）— 忽略"
+        fi
+        pid=""
+        rm -f "$PID_FILE"
+    fi
+    if [ -z "$pid" ] && [ -n "$MODEL" ]; then
         pid="$(find_server_pid || true)"
     fi
     if [ -z "$pid" ]; then
@@ -238,7 +299,11 @@ cmd_status() {
         echo "  进程     : ${detail}"
     fi
     if health_ok; then
-        ok "健康检查: /health 正常"
+        if service_alias_ok; then
+            ok "健康检查: /health 正常"
+        else
+            warn "端口 ${PORT} 有 /health 200 但非 tess-4.5-27b — 可能是其他模型服务占用了端口"
+        fi
     elif [ "$state" = "running" ]; then
         warn "进程在但 /health 未就绪（可能仍在加载模型）"
     fi
@@ -261,8 +326,10 @@ cmd_health() {
 
 cmd_logs() {
     [ -f "$LOG_FILE" ] || { warn "尚无日志: ${LOG_FILE}"; return 0; }
-    msg "跟踪日志 logs/server.log（Ctrl-C 退出跟踪，服务不受影响）"
+    msg "跟踪日志 logs/server.log（Ctrl-C 退出跟踪，服务与菜单不受影响）"
+    trap ':' INT   # Ctrl-C 只杀 tail：bash 捕获后延后处理，继续执行
     tail -n 50 -f "$LOG_FILE"
+    trap - INT
 }
 
 # ── 模型下载 ────────────────────────────────────────────────────────
@@ -280,10 +347,14 @@ cmd_download() {
     local dl_log="${LOG_DIR}/download-${ts}.log"
     msg "下载仓库: ${HF_REPO} → ${dl_dir}"
     msg "下载源: ${HF_ENDPOINT_VAL} · 日志: logs/download-${ts}.log（断点续传，可重复执行）"
+    # 包裹失败路径：hf 失败/中断不得被 set -e 腰斩（pipefail），给出可续传指引
     # 规避 socks 代理坑：ALL_PROXY=socks:// 会被 httpx 判为非法 → 显式剔除
-    env -u ALL_PROXY -u all_proxy HF_ENDPOINT="$HF_ENDPOINT_VAL" \
+    if ! env -u ALL_PROXY -u all_proxy HF_ENDPOINT="$HF_ENDPOINT_VAL" \
         hf download "$HF_REPO" "$MAIN_GGUF" "$DRAFT_GGUF" \
-        --local-dir "$dl_dir" 2>&1 | tee "$dl_log"
+        --local-dir "$dl_dir" 2>&1 | tee "$dl_log"; then
+        fail "hf 下载失败/中断（断点续传，可重试）— 日志: logs/download-${ts}.log"
+        return 1
+    fi
     if check_models "$dl_dir"; then
         ok "模型下载完成并校验通过: ${dl_dir}"
         if [ "$dl_dir" != "$MODEL_DIR" ]; then
@@ -310,7 +381,7 @@ cmd_menu() {
         echo " h) help       命令行帮助"
         echo " q) quit       退出"
         echo "======================================="
-        read -r -p "请选择: " choice
+        read -r -p "请选择: " choice || { echo ""; echo "再见。（EOF 退出）"; break; }
         case "${choice,,}" in
             1) cmd_start   || true ;;
             2) cmd_stop    || true ;;
@@ -319,7 +390,7 @@ cmd_menu() {
             5) cmd_health  || true ;;
             6) cmd_logs    || true ;;
             7)
-                read -r -p "下载目录 [回车=${MODEL_DIR:-未配置}]: " dldir
+                read -r -p "下载目录 [回车=${MODEL_DIR:-未配置}]: " dldir || dldir=""
                 cmd_download "$dldir" || true
                 ;;
             h|help) usage ;;
