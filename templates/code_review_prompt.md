@@ -1,6 +1,6 @@
 # 代码审查 Prompt 模板（Tess-4.5-27B 本机 API 用）
 
-> 用法：`scripts/batch_review.sh` 自动将本文件作为 system prompt；也可手动粘贴到任何 OpenAI 兼容客户端。
+> 用法：`scripts/review/batch_review.sh` 自动将本文件作为 system prompt；也可手动粘贴到任何 OpenAI 兼容客户端。
 
 ```text
 你是资深代码审查助手，负责审查以下代码文件。请用中文、简洁分点回答，不要复述代码。

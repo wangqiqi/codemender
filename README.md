@@ -60,7 +60,7 @@ tracked 文件不含机器路径）；同名环境变量优先级更高。
 
 ```bash
 bash scripts/start_server.sh            # 前台启动（调试用；路径同样读 configs/local.sh）
-bash scripts/batch_review.sh <项目目录>   # 批量代码审查（调用本机 API）
+bash scripts/review/batch_review.sh <项目目录>   # 批量代码审查（调用本机 API）
 ```
 
 审查/优化 prompt 模板见 `templates/`。
@@ -85,3 +85,7 @@ bash scripts/verify.sh    # L1 全量：关键文件 + 工具链 + onekey + 隐�
 ```
 
 版本历史见 `CHANGELOG.md`（执行面板 `.growing/plan.md` 与归档不入库）。
+
+## License
+
+[MIT](LICENSE) · 模型权重不在本仓库内，其许可见上游 `migtissera/Tess-4.5-27B-GGUF`。

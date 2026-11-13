@@ -12,15 +12,10 @@
 # 注意：`config/roles.json` 的人格 `given_name` / `nicknames` 属**虚构角色**命名，
 # 不登记；只有作者/真人标识才登记。
 
-# --- 作者 / 维护者标识 ---
-saida
-wangqiqi
-guanfu
-sjudge
-rdm-week
-wangqiqi
-老周
-周大叔
+# --- 作者 / 维护者标识（公开版不含真实标识；自用副本在此登记真人标识） ---
+# <your-name>
+# <your-handle>
+# <your-alias>
 
 # --- 机器绝对路径 ---
 /home/[a-zA-Z0-9._-]+/

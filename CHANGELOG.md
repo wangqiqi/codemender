@@ -4,18 +4,18 @@
 
 ### Added
 - `onekey_start.sh`（SPRINT-03）：一键运维入口 — `start/stop/restart/status/health/logs` 服务管理（nohup 后台 + pidfile + `logs/server.log`，status 区分运行/停止/僵尸 pidfile，stop 优雅 TERM→KILL），交互菜单 + CLI 子命令双模
+- `LICENSE`（MIT）：公开发布准备；README 新增 License 节（注明模型权重许可见上游）
 - `scripts/verify_onekey.sh`：onekey L1 验收（语法 + dispatch 冒烟，不真启停服务）
 - `download` 子命令（SPRINT-03）：`hf` CLI 下载主模型 + MTP draft（`migtissera/Tess-4.5-27B-GGUF`），默认 `hf-mirror.com` 可 `HF_ENDPOINT` 覆盖，`env -u ALL_PROXY` 规避 socks 坑，断点续传，日志 `logs/download-*.log`
 - 交互菜单（SPRINT-03）：无参运行进入菜单（start/stop/restart/status/health/logs/download），菜单与 CLI 子命令同源 dispatch
 
 ### Changed
-### Changed
 - `README.md` 新增「一键运维」使用节与环境变量覆盖表；`scripts/verify.sh` 聚合 `verify_onekey.sh`
 - **隐私脱敏**：本机路径（用户名/绝对路径）迁入 `configs/local.sh`（gitignored），tracked 文件零字面路径；新增 `configs/paths.example.sh` 模板与 `verify.sh` 防回退门禁；`start_server.sh`/`onekey_start.sh` 缺配置时 fail-closed 指引
+- `.cursor/.../denylist.txt`：移除「作者/维护者标识」段中的真实个人标识，公开版保留占位注释
 - `download [目录]`（SPRINT-03 follow-up）：支持指定下载目标目录，缺省仍为 `TESS_MODEL_DIR`；菜单选择后可输入路径或回车用默认；下载到非默认目录时提示与 `TESS_MODEL_DIR` 差异
-
-### Changed
 - `README.md` 重构：快速开始前置 onekey 主入口与配置初始化，补实测性能数据（bench/report.md），服务管理改命令表，新增验收节
+- 脚本布局整改（母版 scripts-layout 门禁）：`batch_review.sh` 移入 `scripts/review/`（根脚本 ≤40 逻辑行）并修正模板路径解析；新增 `scripts/README.md` 脚本矩阵 SSOT；补根 `.cursorignore`（scaffold 模板落地）
 
 ## [v0.1.8] - 2026-11-13
 

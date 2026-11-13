@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # TASK-007 批量代码审查：对目标项目源码逐文件调用 Tess-4.5-27B 本机 API 生成审查报告
-# 用法: bash scripts/batch_review.sh <项目目录> [-o 输出目录] [-e 扩展名(逗号分隔)] [--dry-run]
+# 用法: bash scripts/review/batch_review.sh <项目目录> [-o 输出目录] [-e 扩展名(逗号分隔)] [--dry-run]
 # 依赖: curl + python3；llama-server 需在 :8000 运行（scripts/start_server.sh）
 set -euo pipefail
 
 BASE="${BASE:-http://localhost:8000}"
 MODEL="${MODEL:-tess-4.5-27b}"
 CHUNK=300                     # 单块最大行数，超长文件分块审查
-TEMPLATE="$(cd "$(dirname "$0")/.." && pwd)/templates/code_review_prompt.md"
+TEMPLATE="$(cd "$(dirname "$0")/../.." && pwd)/templates/code_review_prompt.md"
 EXT_DEFAULT="c,h,cpp,hpp,cc,py,sh,bash,ts,tsx,js,go,rs,java,kt,swift,yaml,yml"
 
 TARGET="" OUT="" EXT="$EXT_DEFAULT" DRY=0
