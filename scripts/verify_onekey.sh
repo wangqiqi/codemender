@@ -38,7 +38,7 @@ echo q | "$ONEKEY" >/dev/null || fail "menu smoke failed"
 grep -q "^cmd_menu()" "$ONEKEY" || fail "missing function cmd_menu"
 
 # TESS_PORT 传导：start_server.sh 不得硬编码端口（防回退）
-START_SH="$ROOT/scripts/start_server.sh"
+START_SH="$ROOT/scripts/server/start_server.sh"
 bash -n "$START_SH" || fail "start_server.sh syntax error"
 grep -q 'PORT="${TESS_PORT:-8000}"' "$START_SH" || fail "start_server.sh 未读 TESS_PORT（防回退）"
 

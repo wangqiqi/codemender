@@ -72,7 +72,7 @@ tracked 文件不含机器路径）；同名环境变量优先级更高。
 ## 手动调试与工具链
 
 ```bash
-bash scripts/start_server.sh            # 前台启动（调试用；路径同样读 configs/local.sh）
+bash scripts/server/start_server.sh            # 前台启动（调试用；路径同样读 configs/local.sh）
 bash scripts/review/batch_review.sh <项目目录>   # 批量代码审查（调用本机 API）
 ```
 
@@ -85,7 +85,7 @@ codemender/
 ├── onekey_start.sh    # 一键运维入口（菜单 + CLI）
 ├── env.example        # Harness「自定义模型 API」填表对照
 ├── configs/           # paths.example.sh（模板）· local.sh（本地私有 · 不入库）
-├── scripts/           # start_server · batch_review · verify · verify_onekey
+├── scripts/           # server/start_server · review/batch_review · verify 系列
 ├── templates/         # 审查/优化 prompt
 ├── bench/             # 性能基准脚本与报告
 └── CHANGELOG.md       # 对外变更记录

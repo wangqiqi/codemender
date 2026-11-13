@@ -273,7 +273,7 @@ cmd_start() {
 _spawn_and_wait() {
     msg "启动 llama-server (port ${PORT}, ctx 32768, 全层 GPU offload)..."
     # start_server.sh 内部 exec → bash 的 PID 即 llama-server 的 PID
-    nohup bash "$ROOT/scripts/start_server.sh" >"$LOG_FILE" 2>&1 &
+    nohup bash "$ROOT/scripts/server/start_server.sh" >"$LOG_FILE" 2>&1 &
     echo $! > "$PID_FILE"
     local pid
     pid="$(cat "$PID_FILE")"

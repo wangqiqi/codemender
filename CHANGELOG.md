@@ -2,8 +2,13 @@
 
 ## [Unreleased]
 
+### Changed
+- **脚本布局整改**（母版 scripts-layout 门禁）：`start_server.sh` 增长至 53 逻辑行（>根脚本 40 上限）→ 迁入 `scripts/server/`；全部引用点同步（onekey · verify · verify_onekey · bench · batch_review · scripts 矩阵 · README）；`.cursor/rules/local` 断链由 `bootstrap-growth.sh` 修复
+
+## [v0.1.17] - 2026-11-13
+
 ### Added
-- **视觉多模态能力**（v0.1.17 · SPRINT-04 延伸）：`start_server.sh` 接线 `--mmproj`（`TESS_MMPROJ=1` 自动探测 `mmproj-*.gguf` 或显式文件名，缺省关闭防意外占显存）；`TESS_CTX` 可调上下文（缺省 32768）；status 新增「视觉」行；mmproj 已下载并实测 — 红色测试图问答正确（`/v1/chat/completions` image_url · 显存 22.8/24.5GB）
+- **视觉多模态能力**（SPRINT-04 延伸）：`start_server.sh` 接线 `--mmproj`（`TESS_MMPROJ=1` 自动探测 `mmproj-*.gguf` 或显式文件名，缺省关闭防意外占显存）；`TESS_CTX` 可调上下文（缺省 32768）；status 新增「视觉」行；mmproj 已下载并实测 — 红色测试图问答正确（`/v1/chat/completions` image_url · 显存 22.8/24.5GB）
 
 ## [v0.1.16] - 2026-11-13
 

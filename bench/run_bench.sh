@@ -5,7 +5,7 @@ set -euo pipefail
 
 BASE="${BASE:-http://localhost:8000}"
 MODEL="${MODEL:-tess-4.5-27b}"
-CTX=32768                      # 与 scripts/start_server.sh 一致
+CTX=32768                      # 与 scripts/server/start_server.sh 一致
 BASELINE_TOKS=49               # 无投机解码实测基线（见 CHANGELOG v0.1.4）
 DIR="$(cd "$(dirname "$0")" && pwd)"
 OUT="$DIR/report.md"

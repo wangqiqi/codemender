@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # TASK-007 批量代码审查：对目标项目源码逐文件调用 Tess-4.5-27B 本机 API 生成审查报告
 # 用法: bash scripts/review/batch_review.sh <项目目录> [-o 输出目录] [-e 扩展名(逗号分隔)] [--dry-run]
-# 依赖: curl + python3；llama-server 需在 :8000 运行（scripts/start_server.sh）
+# 依赖: curl + python3；llama-server 需在 :8000 运行（scripts/server/start_server.sh）
 set -euo pipefail
 
 BASE="${BASE:-http://localhost:8000}"
