@@ -32,8 +32,21 @@ MODEL_DIR="${TESS_MODEL_DIR:-}"
 : "${MODEL_DIR:?缺少 TESS_MODEL_DIR — 复制 configs/paths.example.sh → configs/local.sh 或导出环境变量}"
 
 PORT="${TESS_PORT:-8000}"
-CTX=32768          # 24GB 显存下 Q4_K_M(16.5GB) 预留 ~7GB 给 KV cache，32K 稳妥
+CTX="${TESS_CTX:-32768}"   # 24GB 显存下 Q4_K_M(16.5GB) 预留 ~7GB 给 KV cache，32K 稳妥
 GPU_LAYERS=999     # 全部层offload到GPU
+
+# 视觉投影（可选 · 缺省关闭）：TESS_MMPROJ=1 自动探测 mmproj-*.gguf，或显式文件名
+MMProj=""
+if [ "${TESS_MMPROJ:-}" = "1" ]; then
+    MMProj="$(ls "${MODEL_DIR}"/mmproj-*.gguf 2>/dev/null | head -n 1 || true)"
+    if [ -z "$MMProj" ]; then
+        echo "❌ TESS_MMPROJ=1 但未在 ${MODEL_DIR} 找到 mmproj-*.gguf — 先运行 download 选 mmproj"
+        exit 1
+    fi
+elif [ -n "${TESS_MMPROJ:-}" ]; then
+    MMProj="${MODEL_DIR}/${TESS_MMPROJ}"
+    [ -f "$MMProj" ] || { echo "❌ mmproj 文件不存在: $MMProj"; exit 1; }
+fi
 
 # 模型变体选型（选型菜单写回 local.sh 托管块 → 此处生效）
 # TESS_MAIN_GGUF 显式设置优先；TESS_DRAFT_GGUF set-but-empty = 无 draft（不加 --spec-type）
@@ -64,6 +77,9 @@ ARGS=(
     --jinja
     --threads "$(nproc)"
 )
+if [ -n "$MMProj" ]; then
+    ARGS+=(--mmproj "$MMProj")
+fi
 if [ -n "$MTP_DRAFT" ]; then
     ARGS+=(--spec-type draft-mtp --model-draft "$MTP_DRAFT")
 fi

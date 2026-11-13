@@ -53,6 +53,8 @@ tracked 文件不含机器路径）；同名环境变量优先级更高。
 | download 磁盘预检下限（GB） | `TESS_DL_MIN_GB` | `20` |
 | 主模型文件名 | `TESS_MAIN_GGUF` | `Tess-4.5-27B-Q4_K_M.gguf`（选型菜单自动写回） |
 | mtp draft 文件名 | `TESS_DRAFT_GGUF` | `mtp-Tess-4.5-27B-Q4_K_M.gguf`（设空 = 无 draft，不加 `--spec-type`） |
+| 视觉投影（缺省关闭） | `TESS_MMPROJ` | 未设 = 关闭；`=1` 自动探测 `mmproj-*.gguf`，或显式文件名 |
+| 上下文长度 | `TESS_CTX` | `32768`（开视觉后显存紧张可降 16384） |
 
 > `start` 内置端口预检：端口被其他进程占用时直接失败并提示换 `TESS_PORT`；
 > `server.log` 超阈值自动轮转为 `server.log.1`（滚动保留 `TESS_LOG_KEEP` 份）。

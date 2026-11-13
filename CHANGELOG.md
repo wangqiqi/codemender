@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Added
+- **视觉多模态能力**（v0.1.17 · SPRINT-04 延伸）：`start_server.sh` 接线 `--mmproj`（`TESS_MMPROJ=1` 自动探测 `mmproj-*.gguf` 或显式文件名，缺省关闭防意外占显存）；`TESS_CTX` 可调上下文（缺省 32768）；status 新增「视觉」行；mmproj 已下载并实测 — 红色测试图问答正确（`/v1/chat/completions` image_url · 显存 22.8/24.5GB）
+
 ## [v0.1.16] - 2026-11-13
 
 ### Added

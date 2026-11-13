@@ -9,7 +9,7 @@ cd "$ROOT"
 
 # ── 配置：configs/local.sh（gitignored）→ 环境变量覆盖；tracked 文件零字面路径 ──
 # 契约：同名环境变量优先级高于 local.sh — source 前保存外部导出值，source 后恢复
-_env_keys="LLAMA_SERVER_BIN TESS_MODEL_DIR TESS_PORT HF_ENDPOINT TESS_START_WAIT TESS_STOP_WAIT TESS_LOG_MAX_BYTES TESS_LOG_KEEP TESS_DL_MIN_GB TESS_MAIN_GGUF TESS_DRAFT_GGUF"
+_env_keys="LLAMA_SERVER_BIN TESS_MODEL_DIR TESS_PORT HF_ENDPOINT TESS_START_WAIT TESS_STOP_WAIT TESS_LOG_MAX_BYTES TESS_LOG_KEEP TESS_DL_MIN_GB TESS_MAIN_GGUF TESS_DRAFT_GGUF TESS_MMPROJ TESS_CTX"
 _env_saved=""
 for _k in ${_env_keys}; do
     if [ -n "${!_k+x}" ]; then
@@ -360,6 +360,11 @@ cmd_status() {
     echo "═══ Codemender 服务状态 ═══"
     echo "  状态     : ${state}"
     echo "  端点     : ${BASE_URL}/v1 (model: tess-4.5-27b)"
+    if [ -n "${TESS_MMPROJ:-}" ]; then
+        echo "  视觉     : 启用（TESS_MMPROJ=${TESS_MMPROJ}）"
+    else
+        echo "  视觉     : 未启用（下载 mmproj 后设 TESS_MMPROJ=1 开启）"
+    fi
     if [ "$state" = "running" ]; then
         local lan wan
         lan="$(lan_ip)"
@@ -664,6 +669,8 @@ usage() {
   TESS_DL_MIN_GB=20 download 预检磁盘可用空间下限（GB）
   TESS_MAIN_GGUF    主模型文件名（选型菜单自动写回，默认 Q4_K_M）
   TESS_DRAFT_GGUF   mtp draft 文件名（设空 = 无 draft，start 不加 --spec-type）
+  TESS_MMPROJ       视觉投影（=1 自动探测 mmproj-*.gguf；缺省关闭）
+  TESS_CTX=32768    上下文长度（开视觉后显存紧张可降 16384）
 EOF
 }
 
