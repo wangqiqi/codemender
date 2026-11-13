@@ -68,7 +68,7 @@ bash scripts/review/batch_review.sh <项目目录>   # 批量代码审查（调�
 ## 目录结构
 
 ```
-Bigmodel/
+codemender/
 ├── onekey_start.sh    # 一键运维入口（菜单 + CLI）
 ├── env.example        # Harness「自定义模型 API」填表对照
 ├── configs/           # paths.example.sh（模板）· local.sh（本地私有 · 不入库）

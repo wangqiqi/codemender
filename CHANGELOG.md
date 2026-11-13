@@ -10,7 +10,7 @@
 - 交互菜单（SPRINT-03）：无参运行进入菜单（start/stop/restart/status/health/logs/download），菜单与 CLI 子命令同源 dispatch
 
 ### Changed
-- **项目更名 Codemender**（原 Bigmodel）：README 标题、onekey 菜单横幅与状态栏头、plan 面板标题品牌化；磁盘目录名与模型 alias `tess-4.5-27b` 不变
+- **项目更名 Codemender**（原 Bigmodel）：README 标题、onekey 菜单横幅与状态栏头、plan 面板标题品牌化，磁盘目录同步改名 `codemender/`；模型 alias `tess-4.5-27b` 不变
 - `README.md` 新增「一键运维」使用节与环境变量覆盖表；`scripts/verify.sh` 聚合 `verify_onekey.sh`
 - **隐私脱敏**：本机路径（用户名/绝对路径）迁入 `configs/local.sh`（gitignored），tracked 文件零字面路径；新增 `configs/paths.example.sh` 模板与 `verify.sh` 防回退门禁；`start_server.sh`/`onekey_start.sh` 缺配置时 fail-closed 指引
 - `.cursor/.../denylist.txt`：移除「作者/维护者标识」段中的真实个人标识，公开版保留占位注释
