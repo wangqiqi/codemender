@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [v0.1.5] - 2026-11-13
+
+### Changed
+- plan.md 迁移至规范落点 `.growing/plan.md`（`workflow.json` → `plan_file`；`.growing/` 加入 .gitignore 不入库）
+- plan.md 重构为执行面板：SPRINT-01（部署）闭环收敛为基线摘要，未完成 TASK-007/008 保留为下一 Sprint 候选
+
 ## [v0.1.4] - 2026-11-13
 
 ### Added
