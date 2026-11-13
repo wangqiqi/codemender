@@ -1,0 +1,15 @@
+# DeepSeek Harness 接入 Tess-4.5-27B 本机端点（示例配置，复制后去掉 .example）
+# 位置：$DSH_HOME/settings.yaml 的 llm-pi-ai 段，或在 Web UI「设置 → 模型」添加 Custom Provider
+
+llm-pi-ai:
+  providers:
+    tess-local:
+      name: Tess-4.5-27B (local 4090)
+      # llama-server 提供的 OpenAI 兼容端点
+      baseURL: http://localhost:8000/v1
+      api: openai-completions
+      apiKey: none            # 本机无鉴权，占位即可
+      models:
+        - id: tess-4.5-27b    # 与 start_server.sh 中 --alias 一致
+          name: Tess 4.5 27B Q4_K_M
+          contextWindow: 32768

@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## [v0.1.2] - 2026-11-13
+
+### Added
+- scripts/start_server.sh：Tess-4.5-27B 一键启动脚本（b9478 + draft-mtp 投机解码）
+- configs/harness.example.yaml：DeepSeek Harness 接入模板（openai-completions，无鉴权）
+
+### Changed
+- plan.md：确认复用已有 llama.cpp b9478（CUDA 版，支持 MTP）；模型开始后台下载（官方源 migtissera/Tess-4.5-27B-GGUF）
+
 ## [v0.1.1] - 2026-11-13
 
 ### Changed

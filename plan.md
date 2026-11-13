@@ -10,9 +10,9 @@
 |---|------|------|------|
 | 1 | 仓库初始化（git init + README + CHANGELOG + .gitignore + 首次提交/tag） | ✅ 本次执行 | 骨架搭建 |
 | 2 | 环境探测（GPU/CUDA/驱动/llama.cpp 是否已装） | ✅ 2026-11-13 | 结果见第四节 |
-| 3 | 模型获取（Tess-4.5-27B Q4_K_M GGUF + MTP draft head 下载） | ⬜ | 预计占用 ~17GB 磁盘 + 17GB 显存 |
-| 4 | 部署 llama-server（Q4_K_M，4090 实测 96 tok/s 需挂载 draft head） | ⬜ | 一键启动脚本 `scripts/start_server.sh` |
-| 5 | OpenAI 兼容 API 封装/网关（可选 FastAPI 反代：鉴权、限流、日志） | ⬜ | 供 DeepSeek Harness 直连 |
+| 3 | 模型获取（Tess-4.5-27B Q4_K_M GGUF + MTP draft head 下载） | 🔄 下载中 | 官方源 `migtissera/Tess-4.5-27B-GGUF`，共 ~18.6GB → `/media/user/data/models/tess-4.5-27b/` |
+| 4 | 部署 llama-server（Q4_K_M，4090 实测 96 tok/s 需挂载 draft head） | 🔧 脚本已就绪 | 复用已有编译 b9478（CUDA 版，原生支持 `--spec-type draft-mtp`），`scripts/start_server.sh` 一键启动 |
+| 5 | API 端点验证（无鉴权 OpenAI 兼容，直接供 Harness 调用） | 🔧 已简化 | 用户确认：本机自用不加鉴权/限流，跳过 FastAPI 网关 |
 | 6 | DeepSeek Harness 接入配置（settings.yaml / Custom Provider 模板） | ⬜ | `configs/harness.example.yaml` |
 | 7 | 本机项目优化工具链（代码审查 prompt 模板、批量优化脚本） | ⬜ | 后续迭代 |
 | 8 | 性能基准与验收（tok/s、长上下文 KV cache 占用、token 节省率 ~25% 验证） | ⬜ | `bench/` |
@@ -43,6 +43,12 @@
 
 **结论**：硬件完全满足；需安装 llama.cpp（推荐从源码编译 CUDA 版本以获得最快 4090 性能 + draft head 支持）。
 
-## 五、变更记录
+## 五、llama.cpp 复用结论（2026-11-13）
+
+- 发现 `/home/user/install/llama/` 已有编译产物：**llama-server b9478**（2026-06-02，CUDA 11.8，`libggml-cuda` 正常链接）。
+- 该版本已支持 `--spec-type draft-mtp` + `--model-draft`，**无需重新编译**。
+- 官方 GGUF 仓库文件确认：`Tess-4.5-27B-Q4_K_M.gguf`（16.55GB）+ `mtp-Tess-4.5-27B-Q4_K_M.gguf`（2.03GB）+ 可选 mmproj（0.93GB，暂不下）。
+
+## 六、变更记录
 
 - 2026-11-13：创建 plan.md，完成仓库初始化。
