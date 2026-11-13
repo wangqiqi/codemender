@@ -6,6 +6,7 @@
 - `onekey_start.sh`（SPRINT-03）：一键运维入口 — `start/stop/restart/status/health/logs` 服务管理（nohup 后台 + pidfile + `logs/server.log`，status 区分运行/停止/僵尸 pidfile，stop 优雅 TERM→KILL），交互菜单 + CLI 子命令双模
 - `scripts/verify_onekey.sh`：onekey L1 验收（语法 + dispatch 冒烟，不真启停服务）
 - `download` 子命令（SPRINT-03）：`hf` CLI 下载主模型 + MTP draft（`migtissera/Tess-4.5-27B-GGUF`），默认 `hf-mirror.com` 可 `HF_ENDPOINT` 覆盖，`env -u ALL_PROXY` 规避 socks 坑，断点续传，日志 `logs/download-*.log`
+- 交互菜单（SPRINT-03）：无参运行进入菜单（start/stop/restart/status/health/logs/download），菜单与 CLI 子命令同源 dispatch
 
 ## [v0.1.8] - 2026-11-13
 

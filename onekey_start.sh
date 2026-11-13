@@ -214,7 +214,38 @@ cmd_download() {
     fi
 }
 
-# ── dispatch（TASK-003 补交互菜单）─────────────────────────────────
+# ── 交互菜单 ────────────────────────────────────────────────────────
+cmd_menu() {
+    while true; do
+        echo ""
+        echo "======== Tess-4.5-27B 一键运维 ========"
+        echo " 1) start      启动服务（后台 + 就绪等待）"
+        echo " 2) stop       停止服务（优雅 TERM → KILL）"
+        echo " 3) restart    重启服务"
+        echo " 4) status     服务状态 + 健康检查 + 模型校验"
+        echo " 5) health     仅健康检查"
+        echo " 6) logs       跟踪服务日志（tail -f）"
+        echo " 7) download   下载/校验模型（断点续传）"
+        echo " h) help       命令行帮助"
+        echo " q) quit       退出"
+        echo "======================================="
+        read -r -p "请选择: " choice
+        case "${choice,,}" in
+            1) cmd_start   || true ;;
+            2) cmd_stop    || true ;;
+            3) cmd_restart || true ;;
+            4) cmd_status  || true ;;
+            5) cmd_health  || true ;;
+            6) cmd_logs    || true ;;
+            7) cmd_download || true ;;
+            h|help) usage ;;
+            q|quit|exit) echo "再见。"; break ;;
+            *) echo "无效选项: ${choice}" ;;
+        esac
+    done
+}
+
+# ── dispatch ────────────────────────────────────────────────────────
 usage() {
     cat <<'EOF'
 用法: ./onekey_start.sh [命令]
@@ -244,11 +275,11 @@ run_cmd() {
         health)  cmd_health ;;
         logs)    cmd_logs ;;
         download) cmd_download ;;
+        menu)    cmd_menu ;;
         help|-h|--help) usage ;;
-        *) 
+        *)
             if [ "$#" -eq 0 ]; then
-                usage
-                msg "（交互菜单开发中 — TASK-003）"
+                cmd_menu
             else
                 fail "未知命令: $1"
                 usage >&2

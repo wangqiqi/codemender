@@ -33,4 +33,8 @@ if "$ONEKEY" __no_such_cmd__ >/dev/null 2>&1; then
     fail "unknown command should exit non-zero"
 fi
 
+# 交互菜单冒烟：无参进菜单，喂 q 退出
+echo q | "$ONEKEY" >/dev/null || fail "menu smoke failed"
+grep -q "^cmd_menu()" "$ONEKEY" || fail "missing function cmd_menu"
+
 echo "OK verify_onekey (L1)"
