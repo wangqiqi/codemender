@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [v0.1.21] - 2026-11-13
+
+### Fixed
+- **SPRINT-06 · 显存预检校准**：本服务 managed pid 的占用按 `compute-apps` 精确识别为「可回收」（restart 不再被自身旧占用误拦）；GPU used 自适应采样（读数稳定或 ~10s 上限，抗 CUDA 释放延迟）；安全余量常量化 `TESS_VRAM_HEADROOM_MB`（默认 1024 — 原 2048 固定值在 24GB 卡视觉+32K 配置下会误拦合法 restart）
+
+### Changed
+- 视觉 + 32K ctx 峰值风险提示：预检通过后明确告知「实测 ~23.4GB/24.5GB · 余 ~1.1GB」并建议大图/并发场景 `TESS_CTX=16384`（默认 ctx 不变 — 用户决策项）
+
 ## [v0.1.20] - 2026-11-13
 
 ### Added

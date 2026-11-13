@@ -79,5 +79,7 @@ grep -q 'TESS_MMPROJ' "$ONEKEY" || fail "onekey 缺 TESS_MMPROJ（status 视觉�
 grep -q 'TESS_API_KEY' "$START_SH" || fail "start_server.sh 缺 --api-key 接线"
 grep -q 'TESS_API_KEY' "$ONEKEY" || fail "onekey 缺 TESS_API_KEY（status 鉴权行）"
 grep -q '^vram_preflight()' "$ONEKEY" || fail "missing function vram_preflight"
+grep -q '^our_pid_reclaimable()' "$ONEKEY" || fail "missing function our_pid_reclaimable"
+grep -q 'TESS_VRAM_HEADROOM_MB' "$ONEKEY" || fail "missing TESS_VRAM_HEADROOM_MB"
 
 echo "OK verify_onekey (L1)"

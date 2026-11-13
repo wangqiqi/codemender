@@ -10,5 +10,9 @@
 # export TESS_DL_MIN_GB=20             # download 预检磁盘可用空间下限（GB）
 # export TESS_MAIN_GGUF="Tess-4.5-27B-Q4_K_M.gguf"     # 主模型文件名（选型菜单自动写回）
 # export TESS_DRAFT_GGUF="mtp-Tess-4.5-27B-Q4_K_M.gguf" # mtp draft；设空 = 无 draft（不加 --spec-type）
+# export TESS_MMPROJ=1                 # 视觉投影（=1 自动探测 mmproj-*.gguf；缺省关闭）
+# export TESS_CTX=32768                # 上下文长度（开视觉显存紧张可降 16384）
+# export TESS_API_KEY="sk-xxx"         # API 鉴权（公网暴露前必做；客户端 Bearer 同值）
+# export TESS_VRAM_HEADROOM_MB=1024    # start 显存预检安全余量（MiB）
 echo "这是模板 — 请复制为 configs/local.sh 后填写，不应直接执行。" >&2
 exit 1

@@ -9,7 +9,7 @@ cd "$ROOT"
 
 # ── 配置：configs/local.sh（gitignored）→ 环境变量覆盖；tracked 文件零字面路径 ──
 # 契约：同名环境变量优先级高于 local.sh — source 前保存外部导出值，source 后恢复
-_env_keys="LLAMA_SERVER_BIN TESS_MODEL_DIR TESS_PORT HF_ENDPOINT TESS_START_WAIT TESS_STOP_WAIT TESS_LOG_MAX_BYTES TESS_LOG_KEEP TESS_DL_MIN_GB TESS_MAIN_GGUF TESS_DRAFT_GGUF TESS_MMPROJ TESS_CTX TESS_API_KEY"
+_env_keys="LLAMA_SERVER_BIN TESS_MODEL_DIR TESS_PORT HF_ENDPOINT TESS_START_WAIT TESS_STOP_WAIT TESS_LOG_MAX_BYTES TESS_LOG_KEEP TESS_DL_MIN_GB TESS_MAIN_GGUF TESS_DRAFT_GGUF TESS_MMPROJ TESS_CTX TESS_API_KEY TESS_VRAM_HEADROOM_MB"
 _env_saved=""
 for _k in ${_env_keys}; do
     if [ -n "${!_k+x}" ]; then
@@ -445,23 +445,60 @@ gpu_total_vram_mib() {
     nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -n 1 | tr -dc '0-9'
 }
 
-# start 前显存余量预检：$1=vram_need_gb — 不足则 fail 并给降 ctx 建议
-# 采样两次（间隔 2s）：restart 场景 stop 刚结束，CUDA 释放有延迟，取后值
+# GPU used 采样：等待读数稳定（两次一致）或 ~10s 上限 — restart 后 CUDA 释放有延迟
+gpu_used_mib_stable() {
+    local prev cur i
+    prev="$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null | head -n 1 | tr -dc '0-9')"
+    for i in 1 2 3 4 5; do
+        sleep 2
+        cur="$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null | head -n 1 | tr -dc '0-9')"
+        if [ -n "$cur" ] && [ "$cur" = "$prev" ]; then
+            echo "$cur"
+            return 0
+        fi
+        prev="$cur"
+    done
+    echo "${cur:-$prev}"
+}
+
+# 本服务（managed pid 且确为 llama-server）当前 GPU 占用 — restart/stop 场景视为可回收
+our_pid_reclaimable() {
+    local pid
+    pid="$(pid_from_file || true)"
+    [ -z "$pid" ] && return 0
+    if ! pid_is_llama "$pid"; then
+        return 0
+    fi
+    nvidia-smi --query-compute-apps=pid,used_memory --format=csv,noheader,nounits 2>/dev/null \
+        | awk -F', *' -v p="$pid" '$1==p {gsub(/[^0-9]/,"",$2); print $2; exit}'
+}
+
+# start 前显存余量预检：$1=vram_need_gb
+# free = 总显存 - 当前占用 + 本服务可回收部分；need = 选型需求 + TESS_VRAM_HEADROOM_MB（默认 1024）
+# 注：视觉（mmproj ~1.2GB）已包含在 22GB 选型估算与实测余量的差值内，无需另加
 vram_preflight() {
-    local total used free_mib need_mib
+    local total used reclaimable free_mib need_mib
+    local headroom_mb="${TESS_VRAM_HEADROOM_MB:-1024}"
     total="$(gpu_total_vram_mib)"
-    [ -z "$total" ] && return 0
-    used="$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null | head -n 1 | tr -dc '0-9')"
-    sleep 2
-    used="$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null | head -n 1 | tr -dc '0-9')"
-    [ -z "$used" ] && return 0
-    free_mib=$((total - used))
-    need_mib=$(( $1 * 1024 + 2048 ))   # 需求 + 2GB 运行余量
+    if [ -z "$total" ]; then
+        return 0
+    fi
+    used="$(gpu_used_mib_stable)"
+    if [ -z "$used" ]; then
+        return 0
+    fi
+    reclaimable="$(our_pid_reclaimable)"
+    reclaimable="${reclaimable:-0}"
+    free_mib=$(( total - used + reclaimable ))
+    need_mib=$(( $1 * 1024 + headroom_mb ))
     if [ "$free_mib" -lt "$need_mib" ]; then
-        fail "GPU 可用 ${free_mib}MiB < 需求约 ${need_mib}MiB（${1}GB 选型 + 2GB 余量）— 先停占用者，或 TESS_CTX=16384 降上下文"
+        fail "GPU 可用约 ${free_mib}MiB < 需求 ${need_mib}MiB（${1}GB 选型 + ${headroom_mb}MiB 余量）— 先停占用者，或 TESS_CTX=16384 降上下文"
         return 1
     fi
-    msg "GPU 可用 ${free_mib}MiB ≥ 需求 ${need_mib}MiB ✅"
+    msg "GPU 可用约 ${free_mib}MiB ≥ 需求 ${need_mib}MiB ✅（含本服务可回收 ${reclaimable}MiB）"
+    if [ -n "${TESS_MMPROJ:-}" ] && [ "${TESS_CTX:-32768}" -ge 32768 ] 2>/dev/null; then
+        warn "视觉 + 32K ctx 实测占用 ~23.4GB/24.5GB（余 ~1.1GB）— 大图/并发场景建议 TESS_CTX=16384"
+    fi
 }
 
 # 显存判定：need ≤ 总显存 → 推荐；≤ 总+4GB → 紧张；否则不推荐
