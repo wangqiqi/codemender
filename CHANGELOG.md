@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [v0.1.24] - 2026-11-13
+
+### Changed
+- **SPRINT-08 · 上下文扩容**：默认 `TESS_CTX` 32768→**65536**（模型原生 `n_ctx_train=262144` — 256K 能力此前被人为限制 1/8）；KV cache 量化默认 `q8_0`（`TESS_KV_CACHE_TYPE` 可切 native）— 实测矩阵（`bench/ctx-report.md`）：64K 原生 KV OOM、q8_0 后 22000MiB 可跑且速度无损；128K+ 双路 OOM（24GB 单卡边界）
+- status 新增「上下文」行（ctx + KV 档 + 原生上限）；start 消息 ctx 动态化
+
+## [v0.1.23] - 2026-11-13
+
 ### Added
 - **视觉投影器驻留策略**（`TESS_MMPROJ_OFFLOAD` · 默认 `0`）：mmproj 默认驻留 CPU — GPU 显存实测回收 1204MiB（22914→21710MiB，视觉功能实测照常「绿色」✅ 出图稍慢）；`=1` 切回 GPU 加速；status 视觉行显示当前驻留模式 — 回答「平时代码为主、偶尔看图」的显存优化诉求
 

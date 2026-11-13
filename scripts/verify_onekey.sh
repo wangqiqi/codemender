@@ -77,6 +77,8 @@ grep -q 'TESS_MMPROJ' "$START_SH" || fail "start_server.sh 缺视觉投影接线
 grep -q 'TESS_CTX' "$START_SH" || fail "start_server.sh 缺 TESS_CTX"
 grep -q 'TESS_MMPROJ_OFFLOAD' "$START_SH" || fail "start_server.sh 缺视觉驻留策略"
 grep -q 'no-mmproj-offload' "$START_SH" || fail "start_server.sh 缺 CPU 驻留默认"
+grep -q 'TESS_KV_CACHE_TYPE' "$START_SH" || fail "start_server.sh 缺 KV 量化配置"
+grep -q 'cache-type-k' "$START_SH" || fail "start_server.sh 缺 --cache-type-k 接线"
 grep -q 'TESS_MMPROJ' "$ONEKEY" || fail "onekey 缺 TESS_MMPROJ（status 视觉行/优先级表）"
 grep -q 'TESS_API_KEY' "$START_SH" || fail "start_server.sh 缺 --api-key 接线"
 grep -q 'TESS_API_KEY' "$ONEKEY" || fail "onekey 缺 TESS_API_KEY（status 鉴权行）"

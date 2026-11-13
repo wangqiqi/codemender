@@ -98,7 +98,8 @@ tracked 文件不含机器路径）；同名环境变量优先级更高。
 | mtp draft 文件名 | `TESS_DRAFT_GGUF` | `mtp-Tess-4.5-27B-Q4_K_M.gguf`（设空 = 无 draft，不加 `--spec-type`） |
 | 视觉投影（缺省关闭） | `TESS_MMPROJ` | 未设 = 关闭；`=1` 自动探测 `mmproj-*.gguf`，或显式文件名 |
 | 视觉投影器驻留 | `TESS_MMPROJ_OFFLOAD` | `0` = CPU 驻留省显存（~1.2GB 还给 KV）；`1` = GPU 加速出图 |
-| 上下文长度 | `TESS_CTX` | `32768`（开视觉后显存紧张可降 16384） |
+| 上下文长度 | `TESS_CTX` | `65536`（64K · 模型原生上限 256K；实测矩阵见 `bench/ctx-report.md`） |
+| KV cache 量化 | `TESS_KV_CACHE_TYPE` | `q8_0`（显存减半 · 实测无速度损失；`native` 切回原精度） |
 | API 鉴权（缺省关闭） | `TESS_API_KEY` | 未设 = 无鉴权；设置后客户端需 OpenAI Bearer（**公网暴露前必做**） |
 | 显存预检安全余量（MiB） | `TESS_VRAM_HEADROOM_MB` | `1024`（预检按「选型需求+余量」判定；本服务占用在 restart 中计为可回收） |
 

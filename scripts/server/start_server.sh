@@ -6,7 +6,7 @@ set -euo pipefail
 # 本机私有路径：configs/local.sh（gitignored）→ 环境变量覆盖；tracked 文件零字面路径
 # 契约：同名环境变量优先级高于 local.sh — source 前保存外部导出值，source 后恢复（与 onekey_start.sh 同源）
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-_env_keys="LLAMA_SERVER_BIN TESS_MODEL_DIR TESS_PORT TESS_MAIN_GGUF TESS_DRAFT_GGUF TESS_MMPROJ TESS_CTX TESS_API_KEY TESS_MMPROJ_OFFLOAD"
+_env_keys="LLAMA_SERVER_BIN TESS_MODEL_DIR TESS_PORT TESS_MAIN_GGUF TESS_DRAFT_GGUF TESS_MMPROJ TESS_CTX TESS_API_KEY TESS_MMPROJ_OFFLOAD TESS_KV_CACHE_TYPE"
 _env_saved=""
 for _k in ${_env_keys}; do
     if [ -n "${!_k+x}" ]; then
@@ -32,7 +32,7 @@ MODEL_DIR="${TESS_MODEL_DIR:-}"
 : "${MODEL_DIR:?缺少 TESS_MODEL_DIR — 复制 configs/paths.example.sh → configs/local.sh 或导出环境变量}"
 
 PORT="${TESS_PORT:-8000}"
-CTX="${TESS_CTX:-32768}"   # 24GB 显存下 Q4_K_M(16.5GB) 预留 ~7GB 给 KV cache，32K 稳妥
+CTX="${TESS_CTX:-65536}"   # 模型原生 n_ctx_train=256K；64K+KV q8_0 实测 22000MiB（24GB 卡余 ~2.1GB）
 GPU_LAYERS=999     # 全部层offload到GPU
 
 # 视觉投影（可选 · 缺省关闭）：TESS_MMPROJ=1 自动探测 mmproj-*.gguf，或显式文件名
@@ -77,6 +77,11 @@ ARGS=(
     --jinja
     --threads "$(nproc)"
 )
+# KV cache 量化（默认 q8_0：显存减半 · 实测无速度损失 — 是 64K ctx 塞进 24GB 的门票）；native 可切回
+KV_TYPE="${TESS_KV_CACHE_TYPE:-q8_0}"
+if [ -n "$KV_TYPE" ] && [ "$KV_TYPE" != "native" ]; then
+    ARGS+=(--cache-type-k "$KV_TYPE" --cache-type-v "$KV_TYPE")
+fi
 if [ -n "$MMProj" ]; then
     ARGS+=(--mmproj "$MMProj")
     # 视觉投影器驻留策略：默认 CPU（省 ~1.2GB 显存 · 平时代码为主）；TESS_MMPROJ_OFFLOAD=1 切 GPU 加速出图

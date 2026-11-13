@@ -9,7 +9,7 @@ cd "$ROOT"
 
 # ── 配置：configs/local.sh（gitignored）→ 环境变量覆盖；tracked 文件零字面路径 ──
 # 契约：同名环境变量优先级高于 local.sh — source 前保存外部导出值，source 后恢复
-_env_keys="LLAMA_SERVER_BIN TESS_MODEL_DIR TESS_PORT HF_ENDPOINT TESS_START_WAIT TESS_STOP_WAIT TESS_LOG_MAX_BYTES TESS_LOG_KEEP TESS_DL_MIN_GB TESS_MAIN_GGUF TESS_DRAFT_GGUF TESS_MMPROJ TESS_CTX TESS_API_KEY TESS_VRAM_HEADROOM_MB TESS_MMPROJ_OFFLOAD"
+_env_keys="LLAMA_SERVER_BIN TESS_MODEL_DIR TESS_PORT HF_ENDPOINT TESS_START_WAIT TESS_STOP_WAIT TESS_LOG_MAX_BYTES TESS_LOG_KEEP TESS_DL_MIN_GB TESS_MAIN_GGUF TESS_DRAFT_GGUF TESS_MMPROJ TESS_CTX TESS_API_KEY TESS_VRAM_HEADROOM_MB TESS_MMPROJ_OFFLOAD TESS_KV_CACHE_TYPE"
 _env_saved=""
 for _k in ${_env_keys}; do
     if [ -n "${!_k+x}" ]; then
@@ -282,7 +282,7 @@ cmd_start() {
 }
 
 _spawn_and_wait() {
-    msg "启动 llama-server (port ${PORT}, ctx 32768, 全层 GPU offload)..."
+    msg "启动 llama-server (port ${PORT}, ctx ${TESS_CTX:-65536}, 全层 GPU offload)..."
     # start_server.sh 内部 exec → bash 的 PID 即 llama-server 的 PID
     nohup bash "$ROOT/scripts/server/start_server.sh" >"$LOG_FILE" 2>&1 &
     echo $! > "$PID_FILE"
@@ -371,6 +371,7 @@ cmd_status() {
     echo "═══ Codemender 服务状态 ═══"
     echo "  状态     : ${state}"
     echo "  端点     : ${BASE_URL}/v1 (model: tess-4.5-27b)"
+    echo "  上下文   : ${TESS_CTX:-65536}（KV: ${TESS_KV_CACHE_TYPE:-q8_0} · 模型原生上限 262144）"
     if [ -n "${TESS_API_KEY:-}" ]; then
         echo "  鉴权     : 已启用（TESS_API_KEY · OpenAI Bearer）"
     else
