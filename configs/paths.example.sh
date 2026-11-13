@@ -15,5 +15,6 @@
 # export TESS_KV_CACHE_TYPE=q8_0       # KV cache 量化（q8_0 减半显存 · native 切回原精度）
 # export TESS_API_KEY="sk-xxx"         # API 鉴权（公网暴露前必做；客户端 Bearer 同值）
 # export TESS_VRAM_HEADROOM_MB=1024    # start 显存预检安全余量（MiB）
+# export TESS_KV_CPU_LAYERS=16         # 大上下文模式：第16层起KV放CPU（128K可行·慢·自动关draft；默认0关闭）
 echo "这是模板 — 请复制为 configs/local.sh 后填写，不应直接执行。" >&2
 exit 1

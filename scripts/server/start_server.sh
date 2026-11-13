@@ -6,7 +6,7 @@ set -euo pipefail
 # 本机私有路径：configs/local.sh（gitignored）→ 环境变量覆盖；tracked 文件零字面路径
 # 契约：同名环境变量优先级高于 local.sh — source 前保存外部导出值，source 后恢复（与 onekey_start.sh 同源）
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-_env_keys="LLAMA_SERVER_BIN TESS_MODEL_DIR TESS_PORT TESS_MAIN_GGUF TESS_DRAFT_GGUF TESS_MMPROJ TESS_CTX TESS_API_KEY TESS_MMPROJ_OFFLOAD TESS_KV_CACHE_TYPE TESS_UBATCH"
+_env_keys="LLAMA_SERVER_BIN TESS_MODEL_DIR TESS_PORT TESS_MAIN_GGUF TESS_DRAFT_GGUF TESS_MMPROJ TESS_CTX TESS_API_KEY TESS_MMPROJ_OFFLOAD TESS_KV_CACHE_TYPE TESS_UBATCH TESS_KV_CPU_LAYERS"
 _env_saved=""
 for _k in ${_env_keys}; do
     if [ -n "${!_k+x}" ]; then
@@ -96,6 +96,23 @@ fi
 # API 鉴权（可选）：TESS_API_KEY 设置 → --api-key（客户端走 OpenAI Bearer）
 if [ -n "${TESS_API_KEY:-}" ]; then
     ARGS+=(--api-key "$TESS_API_KEY")
+fi
+# 分层 KV 卸载（可选 · 大上下文模式）：TESS_KV_CPU_LAYERS=N → 第 N 层起 KV 放 CPU
+# 实测（bench/kv-offload-report.md）：128K 可行但生成速度损失大（4.6~40s/200tok）· 与 draft-mtp 冲突（自动禁用）
+KV_CPU_LAYERS="${TESS_KV_CPU_LAYERS:-0}"
+if [ -n "$KV_CPU_LAYERS" ] && [ "$KV_CPU_LAYERS" != "0" ]; then
+    ARGS+=(--no-kv-unified)
+    tens=$((KV_CPU_LAYERS / 10)); ones=$((KV_CPU_LAYERS % 10))
+    re=""
+    if [ "$tens" -eq 0 ]; then
+        re="([${ones}-9]|[1-9][0-9])"
+    else
+        if [ "$ones" -gt 0 ]; then re="${tens}[${ones}-9]"; fi
+        for ((t=tens+1; t<=9; t++)); do re="${re:+$re|}${t}[0-9]"; done
+        re="(${re})"
+    fi
+    ARGS+=(-ot "blk\.${re}\.attn_k=CPU" -ot "blk\.${re}\.attn_v=CPU")
+    MTP_DRAFT=""   # 实测与 draft-mtp 冲突（段错误）→ 大上下文模式自动禁用投机
 fi
 if [ -n "$MTP_DRAFT" ]; then
     ARGS+=(--spec-type draft-mtp --model-draft "$MTP_DRAFT")

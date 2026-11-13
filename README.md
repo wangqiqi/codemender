@@ -103,6 +103,7 @@ tracked 文件不含机器路径）；同名环境变量优先级更高。
 | API 鉴权（缺省关闭） | `TESS_API_KEY` | 未设 = 无鉴权；设置后客户端需 OpenAI Bearer（**公网暴露前必做**） |
 | 显存预检安全余量（MiB） | `TESS_VRAM_HEADROOM_MB` | `1024`（预检按「选型需求+余量」判定；本服务占用在 restart 中计为可回收） |
 | 物理 batch 大小 | `TESS_UBATCH` | `2048`（默认；实测生成提速 ~28%；`512` 切回保守省 0.9GB 显存） |
+| 分层 KV 卸载（大上下文模式） | `TESS_KV_CPU_LAYERS` | `0` 关闭；`=N` 第 N 层起 KV→CPU — 128K 可行但速度损失大且自动关 draft-mtp（实测 `bench/kv-offload-report.md`） |
 
 > `start` 内置端口预检；`server.log` 超阈值自动轮转（滚动保留 `TESS_LOG_KEEP` 份）。
 >

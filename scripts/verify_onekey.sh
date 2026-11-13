@@ -81,6 +81,8 @@ grep -q 'TESS_KV_CACHE_TYPE' "$START_SH" || fail "start_server.sh 缺 KV 量化�
 grep -q 'cache-type-k' "$START_SH" || fail "start_server.sh 缺 --cache-type-k 接线"
 grep -q 'TESS_UBATCH' "$START_SH" || fail "start_server.sh 缺 ubatch 配置"
 grep -q 'ubatch-size' "$START_SH" || fail "start_server.sh 缺 --ubatch-size 接线"
+grep -q 'TESS_KV_CPU_LAYERS' "$START_SH" || fail "start_server.sh 缺分层 KV 卸载配置"
+grep -q 'no-kv-unified' "$START_SH" || fail "start_server.sh 缺 no-kv-unified 联动"
 grep -q 'TESS_MMPROJ' "$ONEKEY" || fail "onekey 缺 TESS_MMPROJ（status 视觉行/优先级表）"
 grep -q 'TESS_API_KEY' "$START_SH" || fail "start_server.sh 缺 --api-key 接线"
 grep -q 'TESS_API_KEY' "$ONEKEY" || fail "onekey 缺 TESS_API_KEY（status 鉴权行）"
