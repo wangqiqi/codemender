@@ -1,56 +1,87 @@
 # Bigmodel — Tess-4.5-27B 本机大模型 API
 
 基于 **Tess-4.5-27B**（Qwen3.6-27B 微调，自带 MTP draft head）在 RTX 4090 上部署的
-本机大模型 API 服务，提供 OpenAI 兼容端点，用于本机所有项目的优化与 DeepSeek Harness 集成。
-
-## 目标硬件
-- GPU: RTX 4090 (24GB)
-- 量化: Q4_K_M（~17.0GB VRAM）
-- 预期性能: 96 tok/s（挂载 MTP draft head，投机解码）
-
-## 目录规划
-```
-Bigmodel/
-├── .growing/plan.md   # 执行面板（不入 git）
-├── onekey_start.sh    # 一键运维入口（菜单 + CLI）
-├── CHANGELOG.md
-├── env.example        # Harness 自定义模型 API 填表对照
-├── configs/           # Harness 模板配置
-├── scripts/           # start_server · batch_review · verify · verify_onekey
-├── templates/         # 审查/优化 prompt
-└── bench/             # 性能基准
-```
+本机大模型服务：OpenAI 兼容端点 `http://localhost:8000/v1`（模型 `tess-4.5-27b`），
+用于本机各项目的代码审查/优化与 DeepSeek Harness 集成。
 
 ## 快速开始
 
 ```bash
-bash scripts/start_server.sh          # :8000 OpenAI 兼容 API（前台，调试用）
-curl -s http://localhost:8000/health
-bash scripts/batch_review.sh <项目目录>   # 批量代码审查
-bash bench/run_bench.sh               # 性能基准
+# 0) 首次使用：配置本机路径（不入库）
+cp configs/paths.example.sh configs/local.sh && $EDITOR configs/local.sh
+
+# 1) 下载/校验模型（hf CLI，断点续传；已下载则秒级校验）
+./onekey_start.sh download
+
+# 2) 后台启动服务（等待 /health 就绪）
+./onekey_start.sh start
+
+# 3) 接入 Harness：按 env.example 填表（Provider: tess-local · :8000/v1）
 ```
 
-Harness 填表见根目录 `env.example`。
+无参运行 `./onekey_start.sh` 进入交互菜单（1-7 + h/q）。
 
-## 一键运维（onekey_start.sh）
+## 服务管理（onekey_start.sh）
 
-无参运行进入交互菜单；子命令亦可在脚本/CI 中直接调用：
+| 命令 | 说明 |
+|------|------|
+| `start` | 后台启动（nohup + `logs/llama-server.pid` + `logs/server.log`），启动前校验模型文件，缺失时提示先 `download` |
+| `stop` | 优雅停止（TERM → 超时 KILL） |
+| `restart` | 重启（幂等） |
+| `status` | 状态（managed / 外部启动 / 僵尸 pidfile）+ `/health` 探活 + 模型文件校验 |
+| `health` | 仅 `GET /health` |
+| `logs` | 跟踪服务日志（`tail -f`） |
+| `download [目录]` | 下载/校验模型；指定非默认目录时提示与 `TESS_MODEL_DIR` 差异 |
+
+### 配置覆盖
+
+真实路径统一放 `configs/local.sh`（复制 `configs/paths.example.sh` 填写，已 gitignore，
+tracked 文件不含机器路径）；同名环境变量优先级更高。
+
+| 项 | 环境变量 | 默认 |
+|----|----------|------|
+| 端口 | `TESS_PORT` | `8000` |
+| 模型目录 | `TESS_MODEL_DIR` | `configs/local.sh` |
+| llama-server 路径 | `LLAMA_SERVER_BIN` | `configs/local.sh` |
+| 下载源 | `HF_ENDPOINT` | `https://hf-mirror.com` |
+| 启动就绪等待（秒） | `TESS_START_WAIT` | `180` |
+
+> 网络坑：HF/httpx 下载遇 `ALL_PROXY=socks://` 非法值会失败，`download` 已自动 `env -u ALL_PROXY` 规避。
+
+## 性能实测（RTX 4090 · Q4_K_M · 32K ctx）
+
+详见 `bench/report.md` · 复跑 `bash bench/run_bench.sh`：
+
+- 生成速度：短上下文 **74.29 tok/s**（vs 无投机基线 49 tok/s → **1.52×**，时间节省 34%）
+- 长上下文（~9731 tok）：prefill **2466 tok/s** · 生成 93.45 tok/s
+- draft-mtp 接受率：短 49.7% / 长 76.6%
+
+## 手动调试与工具链
 
 ```bash
-./onekey_start.sh              # 交互菜单
-./onekey_start.sh start        # 后台启动（nohup + logs/llama-server.pid + logs/server.log）
-./onekey_start.sh status       # 状态 + 健康检查 + 模型文件校验
-./onekey_start.sh stop         # 优雅停止（TERM → 超时 KILL）
-./onekey_start.sh restart      # 重启（幂等）
-./onekey_start.sh download     # 下载/校验模型（hf CLI，断点续传；可加目标目录参数）
+bash scripts/start_server.sh            # 前台启动（调试用；路径同样读 configs/local.sh）
+bash scripts/batch_review.sh <项目目录>   # 批量代码审查（调用本机 API）
 ```
 
-| 覆盖项 | 环境变量 | 配置来源 |
-|--------|----------|----------|
-| 端口 | `TESS_PORT` | 默认 `8000` |
-| 模型目录 | `TESS_MODEL_DIR` | `configs/local.sh`（本地私有 · 不入库） |
-| llama-server 路径 | `LLAMA_SERVER_BIN` | `configs/local.sh`（本地私有 · 不入库） |
-| 下载源 | `HF_ENDPOINT` | 默认 `https://hf-mirror.com` |
-| 启动就绪等待 | `TESS_START_WAIT` | 默认 `180`（秒） |
+审查/优化 prompt 模板见 `templates/`。
 
-说明：真实本机路径统一放 `configs/local.sh`（复制 `configs/paths.example.sh` 填写，已被 `.gitignore` 忽略），tracked 文件不含机器路径；`download [目录]` 可指定下载目录（缺省 `TESS_MODEL_DIR`），指定非默认目录时下载完会提示与 `TESS_MODEL_DIR` 的差异；`download` 自动剔除非法 `ALL_PROXY=socks://`；`start` 前会先校验模型文件，缺失时提示先 `download`。
+## 目录结构
+
+```
+Bigmodel/
+├── onekey_start.sh    # 一键运维入口（菜单 + CLI）
+├── env.example        # Harness「自定义模型 API」填表对照
+├── configs/           # paths.example.sh（模板）· local.sh（本地私有 · 不入库）
+├── scripts/           # start_server · batch_review · verify · verify_onekey
+├── templates/         # 审查/优化 prompt
+├── bench/             # 性能基准脚本与报告
+└── CHANGELOG.md       # 对外变更记录
+```
+
+## 验收
+
+```bash
+bash scripts/verify.sh    # L1 全量：关键文件 + 工具链 + onekey + 隐私防回退门禁
+```
+
+版本历史见 `CHANGELOG.md`（执行面板 `.growing/plan.md` 与归档不入库）。

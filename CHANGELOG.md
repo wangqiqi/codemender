@@ -14,6 +14,9 @@
 - **隐私脱敏**：本机路径（用户名/绝对路径）迁入 `configs/local.sh`（gitignored），tracked 文件零字面路径；新增 `configs/paths.example.sh` 模板与 `verify.sh` 防回退门禁；`start_server.sh`/`onekey_start.sh` 缺配置时 fail-closed 指引
 - `download [目录]`（SPRINT-03 follow-up）：支持指定下载目标目录，缺省仍为 `TESS_MODEL_DIR`；菜单选择后可输入路径或回车用默认；下载到非默认目录时提示与 `TESS_MODEL_DIR` 差异
 
+### Changed
+- `README.md` 重构：快速开始前置 onekey 主入口与配置初始化，补实测性能数据（bench/report.md），服务管理改命令表，新增验收节
+
 ## [v0.1.8] - 2026-11-13
 
 ### Added
