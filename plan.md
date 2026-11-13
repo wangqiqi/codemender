@@ -10,9 +10,9 @@
 |---|------|------|------|
 | 1 | 仓库初始化（git init + README + CHANGELOG + .gitignore + 首次提交/tag） | ✅ 本次执行 | 骨架搭建 |
 | 2 | 环境探测（GPU/CUDA/驱动/llama.cpp 是否已装） | ✅ 2026-11-13 | 结果见第四节 |
-| 3 | 模型获取（Tess-4.5-27B Q4_K_M GGUF + MTP draft head 下载） | 🔄 下载中 | HF 代理仅 ~90KB/s → 改用魔搭直连 ~17MB/s，预计 ~30 分钟 |
-| 4 | 部署 llama-server（Q4_K_M，4090 实测 96 tok/s 需挂载 draft head） | 🔧 脚本已就绪 | 复用已有编译 b9478（CUDA 版，原生支持 `--spec-type draft-mtp`），`scripts/start_server.sh` 一键启动 |
-| 5 | API 端点验证（无鉴权 OpenAI 兼容，直接供 Harness 调用） | 🔧 已简化 | 用户确认：本机自用不加鉴权/限流，跳过 FastAPI 网关 |
+| 3 | 模型获取（Tess-4.5-27B Q4_K_M GGUF + MTP draft head 下载） | ✅ 2026-11-13 | 魔搭直连完成，字节数与官方一致，GGUF 魔数校验通过 |
+| 4 | 部署 llama-server（Q4_K_M，4090 实测 96 tok/s 需挂载 draft head） | ✅ 2026-11-13 | 服务运行中 :8000，显存 22.8GB，**实测 80.27 tok/s**（MTP 接受率 57.4%） |
+| 5 | API 端点验证（无鉴权 OpenAI 兼容，直接供 Harness 调用） | ✅ 2026-11-13 | `/v1/chat/completions` 实测通过（195 tokens/2.6s），prompt 318 tok/s |
 | 6 | DeepSeek Harness 接入配置（settings.yaml / Custom Provider 模板） | ⬜ | `configs/harness.example.yaml` |
 | 7 | 本机项目优化工具链（代码审查 prompt 模板、批量优化脚本） | ⬜ | 后续迭代 |
 | 8 | 性能基准与验收（tok/s、长上下文 KV cache 占用、token 节省率 ~25% 验证） | ⬜ | `bench/` |
@@ -43,7 +43,12 @@
 
 **结论**：硬件完全满足；需安装 llama.cpp（推荐从源码编译 CUDA 版本以获得最快 4090 性能 + draft head 支持）。
 
-## 五、llama.cpp 复用结论（2026-11-13）
+## 五、部署与性能实测（2026-11-13）
+
+- 服务：`scripts/start_server.sh` 启动，监听 :8000，ctx 32K，全层 GPU offload，显存 22.8GB。
+- 实测：生成 **80.27 tok/s**（draft-mtp，接受率 57.4%），prompt 处理 318 tok/s，`/v1/chat/completions` 端点正常。
+
+## 六、llama.cpp 复用结论（2026-11-13）
 
 - 发现 `/home/user/install/llama/` 已有编译产物：**llama-server b9478**（2026-06-02，CUDA 11.8，`libggml-cuda` 正常链接）。
 - 该版本已支持 `--spec-type draft-mtp` + `--model-draft`，**无需重新编译**。

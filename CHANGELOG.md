@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [v0.1.4] - 2026-11-13
+
+### Added
+- 模型部署完成：Tess-4.5-27B Q4_K_M + MTP draft head（魔搭直连下载，校验通过）
+- 服务上线：llama-server :8000，实测 80.27 tok/s（draft-mtp 接受率 57.4%），OpenAI 兼容端点验证通过
+
 ## [v0.1.3] - 2026-11-13
 
 ### Changed
