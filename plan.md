@@ -10,7 +10,7 @@
 |---|------|------|------|
 | 1 | 仓库初始化（git init + README + CHANGELOG + .gitignore + 首次提交/tag） | ✅ 本次执行 | 骨架搭建 |
 | 2 | 环境探测（GPU/CUDA/驱动/llama.cpp 是否已装） | ✅ 2026-11-13 | 结果见第四节 |
-| 3 | 模型获取（Tess-4.5-27B Q4_K_M GGUF + MTP draft head 下载） | 🔄 下载中 | 官方源 `migtissera/Tess-4.5-27B-GGUF`，共 ~18.6GB → `/media/user/data/models/tess-4.5-27b/` |
+| 3 | 模型获取（Tess-4.5-27B Q4_K_M GGUF + MTP draft head 下载） | 🔄 下载中 | HF 代理仅 ~90KB/s → 改用魔搭直连 ~17MB/s，预计 ~30 分钟 |
 | 4 | 部署 llama-server（Q4_K_M，4090 实测 96 tok/s 需挂载 draft head） | 🔧 脚本已就绪 | 复用已有编译 b9478（CUDA 版，原生支持 `--spec-type draft-mtp`），`scripts/start_server.sh` 一键启动 |
 | 5 | API 端点验证（无鉴权 OpenAI 兼容，直接供 Harness 调用） | 🔧 已简化 | 用户确认：本机自用不加鉴权/限流，跳过 FastAPI 网关 |
 | 6 | DeepSeek Harness 接入配置（settings.yaml / Custom Provider 模板） | ⬜ | `configs/harness.example.yaml` |
@@ -48,6 +48,8 @@
 - 发现 `/home/user/install/llama/` 已有编译产物：**llama-server b9478**（2026-06-02，CUDA 11.8，`libggml-cuda` 正常链接）。
 - 该版本已支持 `--spec-type draft-mtp` + `--model-draft`，**无需重新编译**。
 - 官方 GGUF 仓库文件确认：`Tess-4.5-27B-Q4_K_M.gguf`（16.55GB）+ `mtp-Tess-4.5-27B-Q4_K_M.gguf`（2.03GB）+ 可选 mmproj（0.93GB，暂不下）。
+- **下载源决策**：HF 经代理仅 ~90KB/s（hf 卡住）→ 改用魔搭 ModelScope 直连（`migtissera/Tess-4.5-27B-GGUF` 官方镜像），实测 ~9-17MB/s，双文件并行下载。
+- 环境坑记录：`ALL_PROXY=socks://` 协议写法非法会导致 `hf`/httpx 报错（缺 socksio），下载时需 `env -u ALL_PROXY -u all_proxy`。
 
 ## 六、变更记录
 

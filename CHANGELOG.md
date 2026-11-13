@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## [v0.1.3] - 2026-11-13
+
+### Changed
+- plan.md：下载源由 HF 改为魔搭 ModelScope 直连（~17MB/s），双文件并行下载中；记录 ALL_PROXY socks:// 环境坑
+
 ## [v0.1.2] - 2026-11-13
 
 ### Added
