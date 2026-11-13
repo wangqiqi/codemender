@@ -37,4 +37,19 @@ fi
 echo q | "$ONEKEY" >/dev/null || fail "menu smoke failed"
 grep -q "^cmd_menu()" "$ONEKEY" || fail "missing function cmd_menu"
 
+# TESS_PORT 传导：start_server.sh 不得硬编码端口（防回退）
+START_SH="$ROOT/scripts/start_server.sh"
+bash -n "$START_SH" || fail "start_server.sh syntax error"
+grep -q 'PORT="${TESS_PORT:-8000}"' "$START_SH" || fail "start_server.sh 未读 TESS_PORT（防回退）"
+
+# 端口预检 + 日志轮转：函数与 env 缺一不可
+grep -q "^port_busy()" "$ONEKEY" || fail "missing function port_busy"
+grep -q "^rotate_log()" "$ONEKEY" || fail "missing function rotate_log"
+grep -q 'TESS_LOG_MAX_BYTES' "$ONEKEY" || fail "missing TESS_LOG_MAX_BYTES"
+grep -q 'TESS_LOG_KEEP' "$ONEKEY" || fail "missing TESS_LOG_KEEP"
+
+# 环境变量优先契约：source local.sh 前后须有保存/恢复逻辑（防回退：local.sh 不得覆盖外部 env）
+grep -q '_env_saved' "$ONEKEY" || fail "onekey 缺 env 优先恢复逻辑"
+grep -q '_env_saved' "$START_SH" || fail "start_server.sh 缺 env 优先恢复逻辑"
+
 echo "OK verify_onekey (L1)"

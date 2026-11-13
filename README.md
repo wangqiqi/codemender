@@ -45,6 +45,12 @@ tracked 文件不含机器路径）；同名环境变量优先级更高。
 | llama-server 路径 | `LLAMA_SERVER_BIN` | `configs/local.sh` |
 | 下载源 | `HF_ENDPOINT` | `https://hf-mirror.com` |
 | 启动就绪等待（秒） | `TESS_START_WAIT` | `180` |
+| 停止等待（秒） | `TESS_STOP_WAIT` | `60` |
+| 日志轮转阈值（字节） | `TESS_LOG_MAX_BYTES` | `10485760`（10MB） |
+| 日志轮转保留份数 | `TESS_LOG_KEEP` | `3` |
+
+> `start` 内置端口预检：端口被其他进程占用时直接失败并提示换 `TESS_PORT`；
+> `server.log` 超阈值自动轮转为 `server.log.1`（滚动保留 `TESS_LOG_KEEP` 份）。
 
 > 网络坑：HF/httpx 下载遇 `ALL_PROXY=socks://` 非法值会失败，`download` 已自动 `env -u ALL_PROXY` 规避。
 

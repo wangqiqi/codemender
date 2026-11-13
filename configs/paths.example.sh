@@ -5,5 +5,7 @@
 # export LLAMA_SERVER_BIN="$HOME/install/llama/bin/llama-server"
 # export TESS_MODEL_DIR="/path/to/models/tess-4.5-27b"
 # export TESS_PORT=8000
+# export TESS_LOG_MAX_BYTES=10485760   # server.log 轮转阈值（字节，默认 10MB）
+# export TESS_LOG_KEEP=3               # 轮转保留份数（server.log.1 ~ .N）
 echo "这是模板 — 请复制为 configs/local.sh 后填写，不应直接执行。" >&2
 exit 1

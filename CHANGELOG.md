@@ -2,8 +2,17 @@
 
 ## [Unreleased]
 
+### Added
+- onekey `start` 端口预检：端口被其他进程占用时直接失败并提示 `TESS_PORT` 换端口（bash `/dev/tcp` 探测，无外部依赖）
+- 日志轮转：`TESS_LOG_MAX_BYTES`（默认 10MB）/ `TESS_LOG_KEEP`（默认 3）— `server.log` 超阈值自动轮转为 `server.log.1`
+
 ### Changed
 - **开源公开化**：`git filter-repo` 重写全部历史 — 清除早期提交中的本机绝对路径（`/home/…`、`/media/…`），作者信息统一为 `wangqiqi <wangqiqi@users.noreply.github.com>`；`LICENSE` 版权人改为 GitHub handle；历史 tag v0.1.0~v0.1.9 随重写同步更新
+
+### Fixed
+- `TESS_PORT` 未传导：`start_server.sh` 曾硬编码 `PORT=8000`，`TESS_PORT` 只影响健康检查 URL（换端口必假失败）→ 现两脚本同读 `TESS_PORT`
+- 环境变量优先契约失真：`configs/local.sh` 的 `export` 会在 `source` 时静默覆盖外部同名环境变量 → source 前保存、source 后恢复外部值（`onekey_start.sh` 与 `start_server.sh` 同源同修）
+- `start` 误删活服务 pidfile：模型加载中（`/health` 未就绪）执行 start 曾清掉 pidfile → 现仅当进程确实已死才清残留
 
 ## [v0.1.9] - 2026-11-13
 

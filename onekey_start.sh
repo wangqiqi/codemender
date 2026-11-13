@@ -8,10 +8,27 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
 # ── 配置：configs/local.sh（gitignored）→ 环境变量覆盖；tracked 文件零字面路径 ──
+# 契约：同名环境变量优先级高于 local.sh — source 前保存外部导出值，source 后恢复
+_env_keys="LLAMA_SERVER_BIN TESS_MODEL_DIR TESS_PORT HF_ENDPOINT TESS_START_WAIT TESS_STOP_WAIT TESS_LOG_MAX_BYTES TESS_LOG_KEEP"
+_env_saved=""
+for _k in ${_env_keys}; do
+    if [ -n "${!_k+x}" ]; then
+        _env_saved="${_env_saved:+${_env_saved}|}${_k}=${!_k}"
+    fi
+done
 if [ -f "${ROOT}/configs/local.sh" ]; then
     # shellcheck source=configs/local.sh
     source "${ROOT}/configs/local.sh"
 fi
+if [ -n "${_env_saved}" ]; then
+    while IFS= read -r _item; do
+        [ -n "$_item" ] || continue
+        _k="${_item%%=*}"
+        _v="${_item#*=}"
+        printf -v "$_k" '%s' "$_v"
+    done < <(printf '%s\n' "$_env_saved" | tr '|' '\n')
+fi
+unset _env_keys _env_saved _k _item _v
 LLAMA_BIN="${LLAMA_SERVER_BIN:-}"
 MODEL_DIR="${TESS_MODEL_DIR:-}"
 MAIN_GGUF="Tess-4.5-27B-Q4_K_M.gguf"
@@ -29,6 +46,8 @@ PID_FILE="${LOG_DIR}/llama-server.pid"
 LOG_FILE="${LOG_DIR}/server.log"
 START_WAIT_SECS="${TESS_START_WAIT:-180}"   # 模型加载 16.5GB，给足时间
 STOP_WAIT_SECS="${TESS_STOP_WAIT:-60}"      # 卸载大模型也需时间
+LOG_MAX_BYTES="${TESS_LOG_MAX_BYTES:-10485760}"  # 日志轮转阈值（默认 10MB）
+LOG_KEEP="${TESS_LOG_KEEP:-3}"              # 轮转保留份数（server.log.1 ~ .N）
 
 mkdir -p "$LOG_DIR"
 
@@ -58,6 +77,30 @@ find_server_pid() {
 
 health_ok() {
     curl -sf --max-time 3 "${BASE_URL}/health" >/dev/null 2>&1
+}
+
+# 端口占用探测（bash 内建 /dev/tcp，无外部依赖）
+port_busy() {
+    (exec 3<>"/dev/tcp/127.0.0.1/${1}") 2>/dev/null
+}
+
+# 日志轮转：超过 LOG_MAX_BYTES → server.log.1，滚动保留 LOG_KEEP 份
+rotate_log() {
+    [ -f "$LOG_FILE" ] || return 0
+    local size
+    size="$(stat -c%s "$LOG_FILE" 2>/dev/null || echo 0)"
+    if [ "$size" -lt "$LOG_MAX_BYTES" ]; then
+        return 0
+    fi
+    local i=$((LOG_KEEP - 1))
+    while [ "$i" -ge 1 ]; do
+        if [ -f "${LOG_FILE}.$i" ]; then
+            mv "${LOG_FILE}.$i" "${LOG_FILE}.$((i + 1))"
+        fi
+        i=$((i - 1))
+    done
+    mv "$LOG_FILE" "${LOG_FILE}.1"
+    msg "日志已轮转（${size}B ≥ ${LOG_MAX_BYTES}B，保留 ${LOG_KEEP} 份）"
 }
 
 check_models() {
@@ -98,10 +141,18 @@ cmd_start() {
         fail "模型文件缺失 — 请先运行: ./onekey_start.sh download"
         return 1
     fi
-    if pid_from_file >/dev/null 2>&1; then
+    # 端口预检：被其他进程占用 → fail 并提示换端口（本服务自身已由 health_ok 短路）
+    if port_busy "$PORT"; then
+        fail "端口 ${PORT} 已被其他进程占用 — 换端口: TESS_PORT=<port> ./onekey_start.sh start"
+        return 1
+    fi
+    # 仅当进程确实已死才清 pidfile（模型加载中 /health 未就绪时不得误删活服务的 pidfile）
+    local stale_pid
+    if stale_pid="$(pid_from_file)" && ! pid_alive "$stale_pid"; then
         warn "发现残留 pidfile（进程已死），清理后重启"
         rm -f "$PID_FILE"
     fi
+    rotate_log
     msg "启动 llama-server (port ${PORT}, ctx 32768, 全层 GPU offload)..."
     # start_server.sh 内部 exec → bash 的 PID 即 llama-server 的 PID
     nohup bash "$ROOT/scripts/start_server.sh" >"$LOG_FILE" 2>&1 &
@@ -296,6 +347,11 @@ usage() {
 
 其他:
   help              本帮助
+
+环境变量（可入 configs/local.sh）:
+  TESS_PORT=8000    服务端口（start_server.sh 同步读取）
+  TESS_LOG_MAX_BYTES=10485760   server.log 轮转阈值（字节）
+  TESS_LOG_KEEP=3   轮转保留份数
 EOF
 }
 
