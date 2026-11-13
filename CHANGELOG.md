@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## [v0.1.7] - 2026-11-13
+
+### Added
+- `env.example`：DeepSeek Harness「自定义模型 API」填表对照（本机 `tess-local` / `:8000/v1`）
+- `templates/code_review_prompt.md`、`templates/optimize_prompt.md`：本机审查/优化 prompt 模板
+- `scripts/batch_review.sh`：对本机项目源码批量调用 Tess API 生成审查报告（TASK-007 进行中）
+
+## [v0.1.6] - 2026-11-13
+
+### Added
+- `bench/run_bench.sh`：性能基准脚本（生成速度 / 长上下文 prefill + KV 占用 / draft-mtp 接受率）
+- `bench/report.md`：首轮基准报告 — 短上下文 **74.29 tok/s**（vs 无投机基线 49 tok/s，**1.52×**，时间节省 **34% ≥ 25% 达标**）、长上下文 prefill 2466 tok/s、KV 占用 ~30% ctx、draft-mtp 接受率 49.7%/76.6%
+
 ## [v0.1.5] - 2026-11-13
 
 ### Changed
