@@ -9,7 +9,7 @@
 | # | 任务 | 状态 | 说明 |
 |---|------|------|------|
 | 1 | 仓库初始化（git init + README + CHANGELOG + .gitignore + 首次提交/tag） | ✅ 本次执行 | 骨架搭建 |
-| 2 | 环境探测（GPU/CUDA/驱动/llama.cpp 是否已装） | ⬜ 待确认后执行 | 决定部署路径 |
+| 2 | 环境探测（GPU/CUDA/驱动/llama.cpp 是否已装） | ✅ 2026-11-13 | 结果见第四节 |
 | 3 | 模型获取（Tess-4.5-27B Q4_K_M GGUF + MTP draft head 下载） | ⬜ | 预计占用 ~17GB 磁盘 + 17GB 显存 |
 | 4 | 部署 llama-server（Q4_K_M，4090 实测 96 tok/s 需挂载 draft head） | ⬜ | 一键启动脚本 `scripts/start_server.sh` |
 | 5 | OpenAI 兼容 API 封装/网关（可选 FastAPI 反代：鉴权、限流、日志） | ⬜ | 供 DeepSeek Harness 直连 |
@@ -24,12 +24,25 @@
 - **API**：`llama-server` 原生 OpenAI 兼容端点（`http://localhost:8000/v1`）。
 - **Harness 集成**：`llm-pi-ai` 段配置 `baseURL` / `api: openai-completions` / `models`。
 
-## 三、待用户确认的问题
+## 三、用户确认结果（2026-11-13）
 
-1. 仓库根目录是否就用当前工作区 `/path/to/project`？（是 → 已初始化）
-2. 模型存放路径偏好？（建议 `~/models/tess-4.5-27b/`，不放入 git 仓库）
-3. 是否需要 FastAPI 网关层，还是直接用 llama-server 裸端点接入 Harness？
+1. ✅ 仓库根目录：`/path/to/project`（已初始化）
+2. ✅ 模型存放路径：`/media/user/data/models/tess-4.5-27b/`（不入 git）
+3. ✅ API 架构：**本机自用，不加鉴权/限流**，直接使用 `llama-server` 标准兼容端点供 DeepSeek Harness 调用（跳过 FastAPI 网关层，任务 5 简化为端点验证）
 
-## 四、变更记录
+## 四、环境探测结果（2026-11-13）
+
+| 项目 | 状态 | 详情 |
+|------|------|------|
+| GPU | ✅ | RTX 4090, 24564 MiB, 驱动 580.178.04, compute 8.9 |
+| CUDA | ⚠️ | nvcc 为 11.8（编译 llama.cpp 可用；如遇新特性需求需升级 CUDA 12.x） |
+| llama.cpp / ollama | ❌ 未安装 | 需自行编译（gcc 11.4 + cmake 3.25 满足要求）或下载预编译版 |
+| Python | ✅ | 3.11.4 |
+| 磁盘 | ✅ | /media/user/data 可用 1.1T（模型放这里） |
+| 内存 | ✅ | 62GB，可用 48GB |
+
+**结论**：硬件完全满足；需安装 llama.cpp（推荐从源码编译 CUDA 版本以获得最快 4090 性能 + draft head 支持）。
+
+## 五、变更记录
 
 - 2026-11-13：创建 plan.md，完成仓库初始化。

@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## [v0.1.1] - 2026-11-13
+
+### Changed
+- plan.md：记录用户确认结果（模型路径 `/media/user/data/models/`、无鉴权裸端点方案）、环境探测结果（4090 驱动正常，llama.cpp 需安装）
+
 ## [v0.1.0] - 2026-11-13
 
 ### Added
